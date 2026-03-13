@@ -6,6 +6,8 @@
 UserSettings/
 MemoryCaptures/
 
+# IDE / generated
+
 *.csproj
 *.unityproj
 *.sln
@@ -16,6 +18,58 @@ MemoryCaptures/
 *.svd
 *.pdb
 
+# OS / editors
+
 .DS_Store
+Thumbs.db
 .vscode
 .idea
+
+# =========================
+
+# Unity Lighting (IGNORE)
+
+# =========================
+
+# baked lightmaps
+
+Lightmap-*.exr
+Lightmap-*.png
+Lightmap-*.hdr
+
+# lighting data
+
+LightingData.asset
+LightingData.asset.meta
+
+# reflection probes
+
+ReflectionProbe-*.exr
+ReflectionProbe-*.hdr
+ReflectionProbe-*.png
+
+# realtime GI / Enlighten
+
+*.gi
+*.gicache
+*.lighting
+*.lightingsettings
+
+# light probe data
+
+LightProbes-*.asset
+LightProbe-*.asset
+
+# progressive lightmapper cache
+
+*LightmapSnapshot*
+*LightingSettings*
+
+# baked occlusion
+
+OcclusionCullingData.asset
+
+# GI cache artifacts (иногда попадают вне Library)
+
+GI/
+LightingCache/
