@@ -1,4 +1,7 @@
-﻿using Systems;
+﻿using DB;
+using Interactable;
+using Player;
+using Systems;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,9 +11,18 @@ namespace Global
     {
         [SerializeField] private PlayerInput configPlayerInput = null;
         [SerializeField] private PlayerController configPlayerController = null;
+        [SerializeField] private PlayerHandsController playerHandsController = null;
+        
+        [SerializeField] private OrderWindowInteractable orderWindowInteractable = null;
+        
+        [SerializeField] private DBMask dbMask = null;
+        [SerializeField] private DBQuest dbQuest = null;
         
         public PlayerInput PlayerInput { private set; get; } = null;
         public PlayerController PlayerController { private set; get; } = null;
+        public PlayerHandsController PlayerHandsController { private set; get; } = null;
+        public OrderWindowInteractable OrderWindowInteractable { private set; get; } = null;
+        
         public Campaign Campaign { private set; get; } = null;
         public DaySystem DaySystem { private set; get; } = null;
         public DirectorSystem DirectorSystem { private set; get; } = null;
@@ -21,6 +33,10 @@ namespace Global
         public OrdersSystem OrdersSystem { private set; get; } = null;
         public PlacerSystem PlacerSystem { private set; get; } = null;
         public InputControlSystem InputControlSystem { private set; get; } = null;
+        public QuestSystem QuestSystem { private set; get; } = null;
+        
+        public DBQuest DBQuest { private set; get; } = null;
+        public DBMask DBMask { private set; get; } = null;
 
         public static Linker Instance { private set; get; } = null;
         
@@ -28,6 +44,12 @@ namespace Global
         {
             PlayerInput = configPlayerInput;
             PlayerController =  configPlayerController;
+            PlayerHandsController = playerHandsController;
+            
+            OrderWindowInteractable = orderWindowInteractable;
+            
+            DBQuest = dbQuest;
+            DBMask = dbMask;
             
             Campaign = GetComponent<Campaign>();
             DaySystem =  GetComponent<DaySystem>();
@@ -39,8 +61,11 @@ namespace Global
             OrdersSystem = GetComponent<OrdersSystem>();
             PlacerSystem = GetComponent<PlacerSystem>();
             InputControlSystem = GetComponent<InputControlSystem>();
+            QuestSystem = GetComponent<QuestSystem>();
 
             Instance = this;
+
+            OrderWindowInteractable.Link();
             
             Campaign.Link();
             DirectorSystem.Link();
@@ -48,6 +73,7 @@ namespace Global
             WorkDaySystem.Link();
             UISystem.Link();
             InputControlSystem.Link();
+            QuestSystem.Link();
         }
     }
 }
