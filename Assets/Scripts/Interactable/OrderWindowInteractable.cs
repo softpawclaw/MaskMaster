@@ -1,6 +1,8 @@
 ﻿using System;
 using DB;
+using Enums;
 using Global;
+using Items;
 using Player;
 using Systems;
 using UnityEngine;
@@ -17,6 +19,7 @@ namespace Interactable
         private UISystem uiSystem = null;
         private QuestSystem questSystem = null;
         private OrdersSystem ordersSystem = null;
+        private ItemsFactory itemsFactory = null;
         
         private int currentDialog = 0;
 
@@ -26,6 +29,7 @@ namespace Interactable
             questSystem = Linker.Instance.QuestSystem;
             ordersSystem = Linker.Instance.OrdersSystem;
             playerHandsController = Linker.Instance.PlayerHandsController;
+            itemsFactory = Linker.Instance.ItemsFactory;
 
             ordersSystem.OnOrderChosen += OnOrderChosenSignature;
             OnNextDialog += OnNextDialogSignature;
@@ -66,8 +70,13 @@ namespace Interactable
 
         private void OnDialogComplete()
         {
+            if (questSystem.CurrentState == QuestState.Start)
+            {
+                var recipe = itemsFactory.GetRecipe(currentMask);
+                playerHandsController.GiveItem(recipe);
+            }
+            
             questSystem.ChangeQuestState();
-            playerHandsController.GiveRecipe(currentMask);
         }
     }
 }

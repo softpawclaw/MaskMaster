@@ -10,8 +10,8 @@ namespace Systems
         private OrdersSystem ordersSystem;
 
         private DBQuest.QuestData currentQuest;
-        private QuestState currentState;
-        
+        public QuestState CurrentState { private set; get; }
+
         public void Link()
         {
             ordersSystem = Linker.Instance.OrdersSystem;
@@ -21,41 +21,41 @@ namespace Systems
 
         public void ChangeQuestState()
         {
-            switch (currentState)
+            switch (CurrentState)
             {
                 case QuestState.Start:
-                    currentState = QuestState.Await;
+                    CurrentState = QuestState.Await;
                     break;
                 case QuestState.Await:
-                    currentState = QuestState.Request;
+                    CurrentState = QuestState.Request;
                     break;
                 case QuestState.Request:
                     //TODO change to result check of mask validation system 
-                    currentState = QuestState.Success;
+                    CurrentState = QuestState.Success;
                     break;
             }
 
-            Debug.Log($"QuestState changed. quest: {currentQuest.Id}, order: {currentQuest.OR_Id}, state: {currentState}");
+            Debug.Log($"QuestState changed. quest: {currentQuest.Id}, order: {currentQuest.OR_Id}, state: {CurrentState}");
         }
         
         public string[] GetDialogs()
         {
             for (int i = 0; i < currentQuest.States.Length; i++)
             {
-                if (currentQuest.States[i].State == currentState)
+                if (currentQuest.States[i].State == CurrentState)
                 {
                     return currentQuest.States[i].DI_Id;
                 }
             }
             
-            Debug.LogError($"No dialogs found. quest: {currentQuest.Id}, order: {currentQuest.OR_Id}, state: {currentState}");
+            Debug.LogError($"No dialogs found. quest: {currentQuest.Id}, order: {currentQuest.OR_Id}, state: {CurrentState}");
             return null;
         }
 
         private void OnOrderChosenSignature(DBQuest.QuestData targetQuest, DBMask.MaskData targetMask)
         {
             currentQuest = targetQuest;
-            currentState = QuestState.Start;
+            CurrentState = QuestState.Start;
         }
     }
 }

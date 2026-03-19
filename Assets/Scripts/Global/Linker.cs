@@ -1,5 +1,6 @@
 ﻿using DB;
 using Interactable;
+using Items;
 using Player;
 using Systems;
 using UnityEngine;
@@ -17,6 +18,8 @@ namespace Global
         
         [SerializeField] private DBMask dbMask = null;
         [SerializeField] private DBQuest dbQuest = null;
+        
+        [SerializeField] private ItemsFactory itemsFactory = null;
         
         public PlayerInput PlayerInput { private set; get; } = null;
         public PlayerController PlayerController { private set; get; } = null;
@@ -37,6 +40,8 @@ namespace Global
         
         public DBQuest DBQuest { private set; get; } = null;
         public DBMask DBMask { private set; get; } = null;
+        
+        public ItemsFactory ItemsFactory { private set; get; } = null;
 
         public static Linker Instance { private set; get; } = null;
         
@@ -50,6 +55,8 @@ namespace Global
             
             DBQuest = dbQuest;
             DBMask = dbMask;
+            
+            ItemsFactory = itemsFactory;
             
             Campaign = GetComponent<Campaign>();
             DaySystem =  GetComponent<DaySystem>();
