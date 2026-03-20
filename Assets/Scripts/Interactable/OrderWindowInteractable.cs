@@ -45,7 +45,7 @@ namespace Interactable
         {
             if (playerHandsController == null)
             { 
-                interactor.GetComponent<PlayerHandsController>();
+                playerHandsController = interactor.GetComponent<PlayerHandsController>();
             }
             
             OnNextDialog?.Invoke();
@@ -72,11 +72,19 @@ namespace Interactable
         {
             if (questSystem.CurrentState == QuestState.Start)
             {
-                var recipe = itemsFactory.GetRecipe(currentMask);
-                playerHandsController.GiveItem(recipe);
+                playerHandsController.OnItemTaken += GiveRecipeDelayed;
+                var paperStack = itemsFactory.GetPaperStackItem();
+                playerHandsController.GiveItem(paperStack);
             }
             
             questSystem.ChangeQuestState();
+        }
+
+        private void GiveRecipeDelayed()
+        {
+            playerHandsController.OnItemTaken -= GiveRecipeDelayed;
+            var recipe = itemsFactory.GetRecipe(currentMask, true);
+            playerHandsController.GiveItem(recipe);
         }
     }
 }

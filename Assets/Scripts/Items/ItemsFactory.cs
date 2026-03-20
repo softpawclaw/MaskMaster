@@ -5,12 +5,25 @@ namespace Items
 {
     public class ItemsFactory : MonoBehaviour
     {
-        [SerializeField] private ItemBase recipeGameObject;
+        [SerializeField] private ItemBase recipeMain;
+        [SerializeField] private ItemBase recipePart;
+        [SerializeField] private PaperStackItem paperStackItem;
 
-        public ItemBase GetRecipe(DBMask.MaskData maskData)
+        public PaperStackItem GetPaperStackItem()
+        {
+            return Instantiate<PaperStackItem>(paperStackItem);
+        }
+
+        public ItemBase GetRecipe(DBMask.MaskData maskData, bool isMain)
         {
             //TODO instance! + initialize! + items pool?
-            return Instantiate<ItemBase>(recipeGameObject);
+            
+            if (isMain)
+            {
+                return Instantiate<ItemBase>(recipeMain);
+            }
+
+            return Instantiate<ItemBase>(recipePart);
         }
     }
 }

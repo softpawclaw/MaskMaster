@@ -1,22 +1,27 @@
 ﻿using Enums;
 using Player;
 using UnityEngine;
+
 namespace Items
 {
     public class ItemPlaceHolder : Interactable.Interactable
     {
+        [Header("Container Socket")]
+        [SerializeField] protected Transform containerSocket;
+        
         [SerializeField] private PlacementType placementType;
         [SerializeField] private ItemSize size;
-        
-        private ItemBase currentItem = null;
+
+        protected ItemBase currentItem;
+
+        public ItemBase CurrentItem => currentItem;
 
         protected override void OnInteract(GameObject interactor)
         {
             var hands = interactor.GetComponent<PlayerHandsController>();
-            
             if (!hands) return;
-            
-            if (currentItem ==null)
+
+            if (currentItem == null)
             {
                 PlaceItem(hands);
             }
@@ -24,64 +29,81 @@ namespace Items
             {
                 ReplaceItem(hands);
             }
-            
+
             CompleteInteraction(interactor);
         }
-        
-        private void PlaceItem(PlayerHandsController hands)
+
+        protected virtual void PlaceItem(PlayerHandsController hands)
         {
             var inItem = hands.ChooseItem(placementType, size);
-            
-            if (!inItem)
+
+            if (inItem == null)
             {
                 Debug.Log("Refused to place empty item");
                 return;
             }
 
-            if (placementType != inItem.PlacementType)
+            if (!CanAcceptItem(inItem))
             {
-                Debug.Log($"Refused to place item {inItem.PlacementType} into {placementType}");
-                return;
-            }
-
-            if (size < inItem.Size)
-            {
-                Debug.Log($"Refused to place item {inItem.Size} into {size}");
+                Debug.Log($"Refused to place item {inItem.ItemId}");
                 return;
             }
 
             hands.FreeItem(inItem);
-            currentItem = inItem;
-            //TODO implement sockets
-            currentItem.transform.SetParent(transform);
-            currentItem.transform.SetPositionAndRotation(transform.position, transform.rotation);
+            AttachItem(inItem);
         }
 
-        private void ReplaceItem(PlayerHandsController hands)
+        protected virtual void ReplaceItem(PlayerHandsController hands)
         {
             var inItem = hands.ChooseItem(placementType, size);
 
-            if (inItem && placementType != inItem.PlacementType)
+            if (inItem != null && !CanAcceptItem(inItem))
             {
-                Debug.Log($"Refused to place item {inItem.PlacementType} into {placementType}");
+                Debug.Log($"Refused to replace with item {inItem.ItemId}");
                 return;
             }
 
-            if (inItem&& size < inItem.Size)
-            {
-                Debug.Log($"Refused to place item {inItem.Size} into {size}");
-                return;
-            }
-
-            if (inItem)
+            if (inItem != null)
             {
                 hands.FreeItem(inItem);
             }
 
-            hands.GiveItem(currentItem);
-            
-            currentItem = inItem;
-            currentItem?.transform.SetPositionAndRotation(transform.position, transform.rotation);
+            var oldItem = currentItem;
+            currentItem = null;
+
+            if (oldItem != null)
+            {
+                var success = hands.GiveItem(oldItem);
+                if (!success)
+                {
+                    Debug.LogWarning("Failed to return current item to player hands");
+                    AttachItem(oldItem);
+                    return;
+                }
+            }
+
+            if (inItem != null)
+            {
+                AttachItem(inItem);
+            }
+        }
+
+        protected virtual bool CanAcceptItem(ItemBase item)
+        {
+            if (item == null) return false;
+            if (item.PlacementType != placementType) return false;
+            if (item.Size > size) return false;
+
+            return true;
+        }
+
+        protected virtual void AttachItem(ItemBase item)
+        {
+            currentItem = item;
+
+            var socket = containerSocket != null ? containerSocket : transform;
+            item.transform.SetParent(socket);
+            item.transform.SetPositionAndRotation(socket.position, socket.rotation);
         }
     }
 }

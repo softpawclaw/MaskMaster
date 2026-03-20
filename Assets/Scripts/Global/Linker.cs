@@ -15,6 +15,7 @@ namespace Global
         [SerializeField] private PlayerHandsController playerHandsController = null;
         
         [SerializeField] private OrderWindowInteractable orderWindowInteractable = null;
+        [SerializeField] private CatalogInteractable catalogInteractable = null;
         
         [SerializeField] private DBMask dbMask = null;
         [SerializeField] private DBQuest dbQuest = null;
@@ -25,6 +26,7 @@ namespace Global
         public PlayerController PlayerController { private set; get; } = null;
         public PlayerHandsController PlayerHandsController { private set; get; } = null;
         public OrderWindowInteractable OrderWindowInteractable { private set; get; } = null;
+        public CatalogInteractable CatalogInteractable { private set; get; } = null;
         
         public Campaign Campaign { private set; get; } = null;
         public DaySystem DaySystem { private set; get; } = null;
@@ -52,6 +54,7 @@ namespace Global
             PlayerHandsController = playerHandsController;
             
             OrderWindowInteractable = orderWindowInteractable;
+            CatalogInteractable = catalogInteractable;
             
             DBQuest = dbQuest;
             DBMask = dbMask;
@@ -73,6 +76,7 @@ namespace Global
             Instance = this;
 
             OrderWindowInteractable.Link();
+            CatalogInteractable.Link();
             
             Campaign.Link();
             DirectorSystem.Link();
