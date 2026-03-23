@@ -9,8 +9,8 @@ namespace Items
         [Header("Container Socket")]
         [SerializeField] protected Transform containerSocket;
         
-        [SerializeField] private PlacementType placementType;
-        [SerializeField] private ItemSize size;
+        [SerializeField] protected PlacementType placementType;
+        [SerializeField] protected ItemSize size;
 
         protected ItemBase currentItem;
 
