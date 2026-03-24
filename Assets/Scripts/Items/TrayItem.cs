@@ -5,7 +5,7 @@ namespace Items
 {
     public class TrayItem : ContainerItemBase
     {
-        private const int SlotCount = 6;
+        private const int SlotCount = 5;
 
         [Header("Tray")]
         [SerializeField] private int selectedIndex = 0;
@@ -48,6 +48,11 @@ namespace Items
         {
             if (!IsValidIndex(index)) return null;
             return slotItems[index];
+        }
+
+        public bool HasSelectedResource()
+        {
+            return GetSelectedResource() != null;
         }
 
         public override void SelectNext()
@@ -100,6 +105,11 @@ namespace Items
             return false;
         }
 
+        /// <summary>
+        /// Старая логика: положить newItem в выбранный слот независимо от того,
+        /// был он пустой или нет. Если что-то лежало — вернуть через out.
+        /// Оставлено для обратной совместимости.
+        /// </summary>
         public bool TryReplaceSelected(ResourceItem newItem, out ResourceItem replacedItem)
         {
             replacedItem = null;
@@ -115,18 +125,92 @@ namespace Items
             return true;
         }
 
-        public ResourceItem ExtractSelectedResource()
+        /// <summary>
+        /// Новая универсальная логика:
+        /// выбранный слот рассматривается как точка обмена.
+        ///
+        /// incomingResource:
+        /// - ресурс, приходящий извне (например, с полки);
+        /// - может быть null.
+        ///
+        /// outgoingResource:
+        /// - то, что раньше лежало в выбранном слоте;
+        /// - может быть null.
+        ///
+        /// Возвращает false только если индекс невалиден
+        /// или если и incoming, и текущее содержимое слота == null,
+        /// то есть реально менять нечего.
+        /// </summary>
+        public bool TryExchangeSelectedResource(ResourceItem incomingResource, out ResourceItem outgoingResource)
         {
-            if (!IsValidIndex(selectedIndex)) return null;
+            outgoingResource = null;
 
-            var result = slotItems[selectedIndex];
-            if (result == null) return null;
+            if (!IsValidIndex(selectedIndex)) return false;
 
-            slotItems[selectedIndex] = null;
+            var currentSelected = slotItems[selectedIndex];
+
+            if (currentSelected == null && incomingResource == null)
+                return false;
+
+            outgoingResource = currentSelected;
+            slotItems[selectedIndex] = incomingResource;
+
             SyncItemsListFromSlots();
             RefreshHandView();
+            return true;
+        }
 
-            return result;
+        /// <summary>
+        /// Новая логика под кейс "снять ресурс с подноса и куда-то передать".
+        /// Работает только если в выбранном слоте есть ресурс.
+        /// </summary>
+        public bool TryTakeSelectedResource(out ResourceItem resource)
+        {
+            resource = null;
+
+            if (!IsValidIndex(selectedIndex)) return false;
+
+            var selected = slotItems[selectedIndex];
+            if (selected == null) return false;
+
+            slotItems[selectedIndex] = null;
+            resource = selected;
+
+            SyncItemsListFromSlots();
+            RefreshHandView();
+            return true;
+        }
+
+        /// <summary>
+        /// Строгий обмен: работает только если выбранный слот НЕ пустой.
+        /// Оставлено как отдельный метод под старый сценарий, где пустой слот
+        /// не должен участвовать во взаимодействии.
+        /// </summary>
+        public bool TrySwapSelectedResource(ResourceItem incomingResource, out ResourceItem outgoingResource)
+        {
+            outgoingResource = null;
+
+            if (incomingResource == null) return false;
+            if (!IsValidIndex(selectedIndex)) return false;
+
+            var selected = slotItems[selectedIndex];
+            if (selected == null) return false;
+
+            outgoingResource = selected;
+            slotItems[selectedIndex] = incomingResource;
+
+            SyncItemsListFromSlots();
+            RefreshHandView();
+            return true;
+        }
+
+        /// <summary>
+        /// Старая логика извлечения выбранного ресурса.
+        /// Оставлено как алиас для совместимости.
+        /// </summary>
+        public ResourceItem ExtractSelectedResource()
+        {
+            return TryTakeSelectedResource(out var resource) ? resource : null;
         }
 
         public override List<ItemBase> ExtractAllItems()

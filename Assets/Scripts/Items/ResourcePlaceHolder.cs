@@ -20,24 +20,26 @@ namespace Items
 
         protected override void PlaceItem(PlayerHandsController hands)
         {
-            var inItem = hands.ChooseItem(
-                placementType: Enums.PlacementType.Placeable,
-                size: Enums.ItemSize.Small);
-
-            if (inItem == null)
+            var tray = hands.GetTrayInHands();
+            if (tray == null)
             {
-                Debug.Log("No suitable resource item in hands");
+                Debug.Log("No tray in hands");
                 return;
             }
 
-            if (!CanAcceptItem(inItem))
+            if (!tray.TryExchangeSelectedResource(null, out var trayResource))
             {
-                Debug.Log($"Refused to place item {inItem.ItemId}");
+                Debug.Log("Nothing to place: selected tray slot is empty");
                 return;
             }
 
-            hands.FreeItem(inItem);
-            AttachItem(inItem);
+            if (trayResource == null)
+            {
+                Debug.Log("Nothing to place: selected tray slot is empty");
+                return;
+            }
+
+            AttachItem(trayResource);
         }
 
         protected override void ReplaceItem(PlayerHandsController hands)
@@ -55,18 +57,19 @@ namespace Items
                 return;
             }
 
-            if (!tray.TryReplaceSelected(shelfResource, out var replacedResource))
+            if (!tray.TryExchangeSelectedResource(shelfResource, out var trayResource))
             {
-                Debug.Log("Failed to place resource into tray");
+                Debug.Log("Nothing to exchange");
                 return;
             }
 
-            currentItem = null;
-
-            if (replacedResource != null)
+            if (trayResource == null)
             {
-                AttachItem(replacedResource);
+                ForgetCurrentItem();
+                return;
             }
+
+            AttachItem(trayResource);
         }
 
         private void InitOnStart()
@@ -79,6 +82,11 @@ namespace Items
 
             var spawnedResource = Instantiate(startResourcePrefab);
             AttachItem(spawnedResource);
+        }
+
+        private void ForgetCurrentItem()
+        {
+            currentItem = null;
         }
     }
 }
