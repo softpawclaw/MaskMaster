@@ -7,15 +7,28 @@ namespace DB
     public class DBMask : MonoBehaviour
     {
         [Serializable]
+        public struct MaskSocketResource
+        {
+            public MaskSocket Socket;
+            public ResourceType ResourceType;
+
+            public MaskSocketResource(MaskSocket socket, ResourceType resourceType)
+            {
+                Socket = socket;
+                ResourceType = resourceType;
+            }
+        }
+
+        [Serializable]
         public struct MaskData
         {
             public string Id;
             public string OR_Id;
             public MaskSize Size;
-            public MaskMaterial Material;
-            public MaskSocket[] Sockets;
+            public ResourceType Material;
+            public MaskSocketResource[] Sockets;
 
-            public MaskData(string id, string orId,  MaskSize size, MaskMaterial material, MaskSocket[] sockets)
+            public MaskData(string id, string orId, MaskSize size, ResourceType material, MaskSocketResource[] sockets)
             {
                 Id = id;
                 OR_Id = orId;
@@ -26,7 +39,7 @@ namespace DB
         }
 
         [SerializeField] private MaskData[] config;
-        
+
         public bool TryGetMaskDataByOrderId(string orId, out MaskData result)
         {
             result = default;

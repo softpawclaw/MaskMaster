@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 8616897403419799959}
   - component: {fileID: 3001560299964486301}
   m_Layer: 0
-  m_Name: BlankWhiteWood
+  m_Name: RE_WhiteWood
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

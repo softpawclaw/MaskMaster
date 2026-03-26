@@ -104,6 +104,19 @@ namespace Items
 
             return false;
         }
+        
+        public List<ResourceItem> GetItemsSnapshot()
+        {
+            var result = new List<ResourceItem>();
+
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (slotItems[i] == null) continue;
+                result.Add(slotItems[i]);
+            }
+
+            return result;
+        }
 
         /// <summary>
         /// Старая логика: положить newItem в выбранный слот независимо от того,

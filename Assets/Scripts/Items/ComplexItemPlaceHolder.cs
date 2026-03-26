@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using Enums;
+﻿using System;
+using System.Collections.Generic;
 using Player;
 using UnityEngine;
 
@@ -16,6 +16,8 @@ namespace Items
 
         private readonly List<ItemBase> placedContent = new();
         private ContainerItemBase currentContainer;
+
+        public event Action OnContentChanged;
 
         private void Start()
         {
@@ -79,11 +81,17 @@ namespace Items
             ClearPlacedContentVisuals();
 
             if (contentSockets == null || contentSockets.Count == 0)
+            {
+                NotifyContentChanged();
                 return;
+            }
 
             var extractedItems = currentContainer.ExtractAllItems();
             if (extractedItems == null || extractedItems.Count == 0)
+            {
+                NotifyContentChanged();
                 return;
+            }
 
             var overflowItems = new List<ItemBase>();
 
@@ -115,6 +123,8 @@ namespace Items
             {
                 currentContainer.LoadItems(overflowItems);
             }
+
+            NotifyContentChanged();
         }
 
         private void ReturnCurrentContainerToHands(PlayerHandsController hands)
@@ -145,6 +155,7 @@ namespace Items
             placedContent.Clear();
             currentItem = null;
             currentContainer = null;
+            NotifyContentChanged();
         }
 
         private void InitOnStart()
@@ -187,6 +198,11 @@ namespace Items
             }
 
             placedContent.Clear();
+        }
+
+        private void NotifyContentChanged()
+        {
+            OnContentChanged?.Invoke();
         }
     }
 }

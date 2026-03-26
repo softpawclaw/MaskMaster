@@ -73,7 +73,7 @@ namespace Interactable
             if (questSystem.CurrentState == QuestState.Start)
             {
                 playerHandsController.OnItemTaken += GiveRecipeDelayed;
-                var paperStack = itemsFactory.GetPaperStackItem();
+                var paperStack = itemsFactory.CreatePaperStack();
                 playerHandsController.GiveItem(paperStack);
             }
             
@@ -83,7 +83,7 @@ namespace Interactable
         private void GiveRecipeDelayed()
         {
             playerHandsController.OnItemTaken -= GiveRecipeDelayed;
-            var recipe = itemsFactory.GetRecipe(currentMask, true);
+            var recipe = itemsFactory.CreateMainRecipe(currentMask);
             playerHandsController.GiveItem(recipe);
         }
     }

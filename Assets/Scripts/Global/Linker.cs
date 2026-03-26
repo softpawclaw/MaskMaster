@@ -1,5 +1,6 @@
 ﻿using DB;
 using Interactable;
+using Interactable.Table;
 using Items;
 using Player;
 using Systems;
@@ -16,6 +17,7 @@ namespace Global
         
         [SerializeField] private OrderWindowInteractable orderWindowInteractable = null;
         [SerializeField] private CatalogInteractable catalogInteractable = null;
+        [SerializeField] private MaskCraftTable maskCraftTable = null;
         
         [SerializeField] private DBMask dbMask = null;
         [SerializeField] private DBQuest dbQuest = null;
@@ -27,6 +29,7 @@ namespace Global
         public PlayerHandsController PlayerHandsController { private set; get; } = null;
         public OrderWindowInteractable OrderWindowInteractable { private set; get; } = null;
         public CatalogInteractable CatalogInteractable { private set; get; } = null;
+        public MaskCraftTable MaskCraftTable { private set; get; } = null;
         
         public Campaign Campaign { private set; get; } = null;
         public DaySystem DaySystem { private set; get; } = null;
@@ -55,6 +58,7 @@ namespace Global
             
             OrderWindowInteractable = orderWindowInteractable;
             CatalogInteractable = catalogInteractable;
+            MaskCraftTable = maskCraftTable;
             
             DBQuest = dbQuest;
             DBMask = dbMask;
@@ -77,6 +81,7 @@ namespace Global
 
             OrderWindowInteractable.Link();
             CatalogInteractable.Link();
+            MaskCraftTable.Link();
             
             Campaign.Link();
             DirectorSystem.Link();
