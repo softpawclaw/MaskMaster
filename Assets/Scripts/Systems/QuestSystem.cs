@@ -10,12 +10,14 @@ namespace Systems
         private OrdersSystem ordersSystem;
 
         private DBQuest.QuestData currentQuest;
-        public QuestState CurrentState { private set; get; }
+        public QuestState CurrentState { get; private set; }
+
+        public string CurrentOrderId => currentQuest.OR_Id;
+        public string CurrentQuestId => currentQuest.Id;
 
         public void Link()
         {
             ordersSystem = Linker.Instance.OrdersSystem;
-            
             ordersSystem.OnOrderChosen += OnOrderChosenSignature;
         }
 
@@ -26,18 +28,19 @@ namespace Systems
                 case QuestState.Start:
                     CurrentState = QuestState.Await;
                     break;
+
                 case QuestState.Await:
                     CurrentState = QuestState.Request;
                     break;
+
                 case QuestState.Request:
-                    //TODO change to result check of mask validation system 
                     CurrentState = QuestState.Success;
                     break;
             }
 
             Debug.Log($"QuestState changed. quest: {currentQuest.Id}, order: {currentQuest.OR_Id}, state: {CurrentState}");
         }
-        
+
         public string[] GetDialogs()
         {
             for (int i = 0; i < currentQuest.States.Length; i++)
@@ -47,7 +50,7 @@ namespace Systems
                     return currentQuest.States[i].DI_Id;
                 }
             }
-            
+
             Debug.LogError($"No dialogs found. quest: {currentQuest.Id}, order: {currentQuest.OR_Id}, state: {CurrentState}");
             return null;
         }

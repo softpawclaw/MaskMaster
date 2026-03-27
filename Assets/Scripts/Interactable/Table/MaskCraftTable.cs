@@ -95,6 +95,14 @@ namespace Interactable.Table
                 Destroy(trayResources[i].gameObject);
             }
 
+            // MVP-заглушка:
+            // после успешного крафта принудительно вычищаем holder рецептов,
+            // удаляя и paper stack, и вложенные recipe pages/children.
+            if (recipeHolder != null)
+            {
+                recipeHolder.EmergencyClearAndDestroy();
+            }
+
             var mask = itemsFactory.CreateMask(recipe.MaskData, actualMaskData);
             outputInteractable.SetItem(mask);
 

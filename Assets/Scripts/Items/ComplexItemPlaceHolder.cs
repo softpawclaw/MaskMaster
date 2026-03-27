@@ -29,7 +29,6 @@ namespace Items
             if (item is not ContainerItemBase)
                 return false;
 
-            // Для бумажной стопки сохраняем старую проверку вместимости сокетов.
             if (item is PaperStackItem stack && contentSockets.Count > 0 && stack.Count > contentSockets.Count)
                 return false;
 
@@ -118,11 +117,57 @@ namespace Items
                 placedContent.Add(childItem);
             }
 
-            // Всё, что не влезло в настроенные сокеты, возвращаем обратно в контейнер.
             if (overflowItems.Count > 0)
             {
                 currentContainer.LoadItems(overflowItems);
             }
+
+            NotifyContentChanged();
+        }
+
+        public void EmergencyClearAndDestroy()
+        {
+            // MVP-заглушка: аварийная очистка контейнера и всего его содержимого.
+            // Нужна для принудительного освобождения сокетов после крафта.
+            if (currentContainer == null && placedContent.Count == 0 && currentItem == null)
+            {
+                NotifyContentChanged();
+                return;
+            }
+
+            for (int i = 0; i < placedContent.Count; i++)
+            {
+                if (placedContent[i] == null)
+                    continue;
+
+                Destroy(placedContent[i].gameObject);
+            }
+
+            placedContent.Clear();
+
+            if (currentContainer != null)
+            {
+                var remainingItems = currentContainer.ExtractAllItems();
+                if (remainingItems != null)
+                {
+                    for (int i = 0; i < remainingItems.Count; i++)
+                    {
+                        if (remainingItems[i] == null)
+                            continue;
+
+                        Destroy(remainingItems[i].gameObject);
+                    }
+                }
+
+                Destroy(currentContainer.gameObject);
+            }
+            else if (currentItem != null)
+            {
+                Destroy(currentItem.gameObject);
+            }
+
+            currentItem = null;
+            currentContainer = null;
 
             NotifyContentChanged();
         }
