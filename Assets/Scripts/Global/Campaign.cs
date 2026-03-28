@@ -32,7 +32,7 @@ namespace Global
             
             Debug.Log($"{this.name} Day {endedDayNum} completed.");
             
-            if (totalDays > endedDayNum)
+            if (totalDays >= endedDayNum)
             {
                 StartDay();
             }

@@ -1,4 +1,9 @@
-﻿using Systems;
+﻿using DB;
+using Interactable;
+using Interactable.Table;
+using Items;
+using Player;
+using Systems;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,9 +13,26 @@ namespace Global
     {
         [SerializeField] private PlayerInput configPlayerInput = null;
         [SerializeField] private PlayerController configPlayerController = null;
+        [SerializeField] private PlayerHandsController playerHandsController = null;
+        
+        [SerializeField] private OrderWindowInteractable orderWindowInteractable = null;
+        [SerializeField] private CatalogInteractable catalogInteractable = null;
+        [SerializeField] private MaskCraftTable maskCraftTable = null;
+        [SerializeField] private MaskShelfInteractable maskShelfInteractable = null;
+        
+        [SerializeField] private DBMask dbMask = null;
+        [SerializeField] private DBQuest dbQuest = null;
+        
+        [SerializeField] private ItemsFactory itemsFactory = null;
         
         public PlayerInput PlayerInput { private set; get; } = null;
         public PlayerController PlayerController { private set; get; } = null;
+        public PlayerHandsController PlayerHandsController { private set; get; } = null;
+        public OrderWindowInteractable OrderWindowInteractable { private set; get; } = null;
+        public CatalogInteractable CatalogInteractable { private set; get; } = null;
+        public MaskCraftTable MaskCraftTable { private set; get; } = null;
+        public MaskShelfInteractable MaskShelfInteractable { private set; get; } = null;
+        
         public Campaign Campaign { private set; get; } = null;
         public DaySystem DaySystem { private set; get; } = null;
         public DirectorSystem DirectorSystem { private set; get; } = null;
@@ -21,6 +43,13 @@ namespace Global
         public OrdersSystem OrdersSystem { private set; get; } = null;
         public PlacerSystem PlacerSystem { private set; get; } = null;
         public InputControlSystem InputControlSystem { private set; get; } = null;
+        public QuestSystem QuestSystem { private set; get; } = null;
+        public DelayedDialogSystem DelayedDialogSystem { private set; get; } = null;
+        
+        public DBQuest DBQuest { private set; get; } = null;
+        public DBMask DBMask { private set; get; } = null;
+        
+        public ItemsFactory ItemsFactory { private set; get; } = null;
 
         public static Linker Instance { private set; get; } = null;
         
@@ -28,6 +57,17 @@ namespace Global
         {
             PlayerInput = configPlayerInput;
             PlayerController =  configPlayerController;
+            PlayerHandsController = playerHandsController;
+            
+            OrderWindowInteractable = orderWindowInteractable;
+            CatalogInteractable = catalogInteractable;
+            MaskCraftTable = maskCraftTable;
+            MaskShelfInteractable = maskShelfInteractable;
+            
+            DBQuest = dbQuest;
+            DBMask = dbMask;
+            
+            ItemsFactory = itemsFactory;
             
             Campaign = GetComponent<Campaign>();
             DaySystem =  GetComponent<DaySystem>();
@@ -39,8 +79,15 @@ namespace Global
             OrdersSystem = GetComponent<OrdersSystem>();
             PlacerSystem = GetComponent<PlacerSystem>();
             InputControlSystem = GetComponent<InputControlSystem>();
+            QuestSystem = GetComponent<QuestSystem>();
+            DelayedDialogSystem = GetComponent<DelayedDialogSystem>();
 
             Instance = this;
+
+            OrderWindowInteractable.Link();
+            CatalogInteractable.Link();
+            MaskCraftTable.Link();
+            MaskShelfInteractable.Link();
             
             Campaign.Link();
             DirectorSystem.Link();
@@ -48,6 +95,8 @@ namespace Global
             WorkDaySystem.Link();
             UISystem.Link();
             InputControlSystem.Link();
+            QuestSystem.Link();
+            DelayedDialogSystem.Link();
         }
     }
 }
