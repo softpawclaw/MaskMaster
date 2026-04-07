@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 9fa5a9cb9f2de8b4486369014b5c021e
+guid: 499795c6eaa32574c81dc24e06ee5cc0
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
@@ -61,13 +61,13 @@ ModelImporter:
     maximumMeshLod: -1
     meshOptimizationFlags: -1
     indexFormat: 0
-    secondaryUVAngleDistortion: 8
+    secondaryUVAngleDistortion: 1
     secondaryUVAreaDistortion: 15
-    secondaryUVHardAngle: 88
+    secondaryUVHardAngle: 40
     secondaryUVMarginMethod: 1
-    secondaryUVMinLightmapResolution: 100
+    secondaryUVMinLightmapResolution: 40
     secondaryUVMinObjectScale: 1
-    secondaryUVPackMargin: 4
+    secondaryUVPackMargin: 20
     useFileScale: 0
     strictVertexDataChecks: 0
   tangentSpace:
@@ -76,7 +76,7 @@ ModelImporter:
     tangentImportMode: 3
     normalCalculationMode: 4
     legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
-    blendShapeNormalImportMode: 0
+    blendShapeNormalImportMode: 1
     normalSmoothingSource: 0
   referencedClips: []
   importAnimation: 0
