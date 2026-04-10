@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Enums;
 using UnityEngine;
 
@@ -24,14 +24,34 @@ namespace DB
         {
             public string Id;
             public string OR_Id;
+            public string ClientId;
+            public string FaceCoverId;
+            public string MistResistanceId;
+            public string DistrictId;
+            public string FactionId;
             public MaskSize Size;
             public ResourceType Material;
             public MaskSocketResource[] Sockets;
 
-            public MaskData(string id, string orId, MaskSize size, ResourceType material, MaskSocketResource[] sockets)
+            public MaskData(
+                string id,
+                string orId,
+                string clientId,
+                string faceCoverId,
+                string mistResistanceId,
+                string districtId,
+                string factionId,
+                MaskSize size,
+                ResourceType material,
+                MaskSocketResource[] sockets)
             {
                 Id = id;
                 OR_Id = orId;
+                ClientId = clientId;
+                FaceCoverId = faceCoverId;
+                MistResistanceId = mistResistanceId;
+                DistrictId = districtId;
+                FactionId = factionId;
                 Size = size;
                 Material = material;
                 Sockets = sockets;

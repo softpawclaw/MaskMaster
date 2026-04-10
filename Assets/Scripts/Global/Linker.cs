@@ -1,4 +1,4 @@
-﻿using DB;
+using DB;
 using Interactable;
 using Interactable.Table;
 using Items;
@@ -22,6 +22,9 @@ namespace Global
         
         [SerializeField] private DBMask dbMask = null;
         [SerializeField] private DBQuest dbQuest = null;
+        [SerializeField] private DBClients dbClients = null;
+        [SerializeField] private DBNames dbNames = null;
+        [SerializeField] private DBMainRecipe dbMainRecipe = null;
         
         [SerializeField] private ItemsFactory itemsFactory = null;
         
@@ -48,6 +51,9 @@ namespace Global
         
         public DBQuest DBQuest { private set; get; } = null;
         public DBMask DBMask { private set; get; } = null;
+        public DBClients DBClients { private set; get; } = null;
+        public DBNames DBNames { private set; get; } = null;
+        public DBMainRecipe DBMainRecipe { private set; get; } = null;
         
         public ItemsFactory ItemsFactory { private set; get; } = null;
 
@@ -56,7 +62,7 @@ namespace Global
         private void Awake()
         {
             PlayerInput = configPlayerInput;
-            PlayerController =  configPlayerController;
+            PlayerController = configPlayerController;
             PlayerHandsController = playerHandsController;
             
             OrderWindowInteractable = orderWindowInteractable;
@@ -66,11 +72,14 @@ namespace Global
             
             DBQuest = dbQuest;
             DBMask = dbMask;
+            DBClients = dbClients;
+            DBNames = dbNames;
+            DBMainRecipe = dbMainRecipe;
             
             ItemsFactory = itemsFactory;
             
             Campaign = GetComponent<Campaign>();
-            DaySystem =  GetComponent<DaySystem>();
+            DaySystem = GetComponent<DaySystem>();
             DirectorSystem = GetComponent<DirectorSystem>();
             UISystem = GetComponent<UISystem>();
             AnimationSystem = GetComponent<AnimationSystem>();

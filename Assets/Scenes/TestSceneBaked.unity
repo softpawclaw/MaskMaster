@@ -12047,8 +12047,11 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 994718827}
+  - component: {fileID: 994718831}
   - component: {fileID: 994718829}
   - component: {fileID: 994718828}
+  - component: {fileID: 994718832}
+  - component: {fileID: 994718830}
   m_Layer: 0
   m_Name: DataBases
   m_TagString: Untagged
@@ -12086,6 +12089,11 @@ MonoBehaviour:
   config:
   - Id: MA_1
     OR_Id: OR_10
+    ClientId: CL_1
+    FaceCoverId: FC_5
+    MistResistanceId: MR_1
+    DistrictId: D_0
+    FactionId: F_2
     Size: 3
     Material: 1
     Sockets:
@@ -12097,6 +12105,11 @@ MonoBehaviour:
       ResourceType: 12
   - Id: MA_2
     OR_Id: OR_11
+    ClientId: CL_0
+    FaceCoverId: FC_1
+    MistResistanceId: MR_0
+    DistrictId: D_1
+    FactionId: F_0
     Size: 3
     Material: 1
     Sockets:
@@ -12149,6 +12162,103 @@ MonoBehaviour:
     - State: 5
       DI_Id:
       - DI_15
+--- !u!114 &994718830
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 994718826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7eddb3e19acd2cf4492169a002331559, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DB.DBMainRecipe
+  config:
+  - Id: FC_0
+    Value: "\u0427\u0435\u043B\u044E\u0441\u0442\u044C"
+  - Id: FC_1
+    Value: "\u0413\u043B\u0430\u0437\u0430"
+  - Id: FC_2
+    Value: "\u041B\u043E\u0431"
+  - Id: FC_3
+    Value: "\u041F\u043E\u043B\u0443\u043C\u0430\u0441\u043A\u0430 \u0432\u0435\u0440\u0445"
+  - Id: FC_4
+    Value: "\u041F\u043E\u043B\u0443\u043C\u0430\u0441\u043A\u0430 \u043D\u0438\u0437"
+  - Id: FC_5
+    Value: "\u041F\u043E\u043B\u043D\u0430\u044F"
+  - Id: MR_0
+    Value: "\u041D\u0438\u0437\u043A\u0430\u044F"
+  - Id: MR_1
+    Value: "\u0421\u0440\u0435\u0434\u043D\u044F\u044F"
+  - Id: MR_2
+    Value: "\u0412\u044B\u0441\u043E\u043A\u0430\u044F"
+  - Id: D_0
+    Value: "\u0420\u0430\u0439\u043E\u043D0"
+  - Id: D_1
+    Value: "\u0420\u0430\u0439\u043E\u043D1"
+  - Id: D_2
+    Value: "\u0420\u0430\u0439\u043E\u043D2"
+  - Id: F_0
+    Value: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F0"
+  - Id: F_1
+    Value: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F1"
+  - Id: F_2
+    Value: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F2"
+  - Id: F_3
+    Value: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F3"
+--- !u!114 &994718831
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 994718826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd7f0050fa3f5184981ead5cef0b5f17, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DB.DBNames
+  config:
+  - Id: N_CLIENT
+    Value: "\u041A\u043B\u0438\u0435\u043D\u0442"
+  - Id: N_ORDER
+    Value: "\u0417\u0430\u043A\u0430\u0437"
+  - Id: N_FaceCover
+    Value: "\u0424\u043E\u0440\u043C\u0430"
+  - Id: N_MistResistance
+    Value: "\u0421\u0442\u043E\u0439\u043A\u043E\u0441\u0442\u044C"
+  - Id: N_District
+    Value: "\u0420\u0430\u0439\u043E\u043D"
+  - Id: N_Faction
+    Value: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F"
+--- !u!114 &994718832
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 994718826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f3493b87e9664244989a36b0cfbc05a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DB.DBClients
+  config:
+  - Id: CL_0
+    Description: "\u0422\u0443\u0442 \u0434\u043E\u043B\u0436\u0435\u043D \u0431\u044B\u0442\u044C
+      \u0442\u0435\u043A\u0441\u0442 \u0441 \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435\u043C
+      \u0434\u043B\u044F \u043A\u043B\u0438\u0435\u043D\u0442\u0430 CL_0, \u043A\u043E\u0442\u043E\u0440\u044B\u0439
+      \u0437\u0430\u043D\u0438\u043C\u0430\u0435\u0442 \u043D\u0435\u043A\u043E\u0442\u043E\u0440\u043E\u0435
+      \u043A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u043C\u0435\u0441\u0442\u0430
+      \u043D\u0430 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435"
+  - Id: CL_1
+    Description: "\u0422\u0443\u0442 \u0434\u043E\u043B\u0436\u0435\u043D \u0431\u044B\u0442\u044C
+      \u0442\u0435\u043A\u0441\u0442 \u0441 \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435\u043C
+      \u0434\u043B\u044F \u043A\u043B\u0438\u0435\u043D\u0442\u0430 CL_1, \u043A\u043E\u0442\u043E\u0440\u044B\u0439
+      \u0437\u0430\u043D\u0438\u043C\u0430\u0435\u0442 \u043D\u0435\u043A\u043E\u0442\u043E\u0440\u043E\u0435
+      \u043A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u043C\u0435\u0441\u0442\u0430
+      \u043D\u0430 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435"
 --- !u!1001 &1002609968
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -19696,6 +19806,9 @@ MonoBehaviour:
   maskShelfInteractable: {fileID: 1271935613}
   dbMask: {fileID: 994718828}
   dbQuest: {fileID: 994718829}
+  dbClients: {fileID: 994718832}
+  dbNames: {fileID: 994718831}
+  dbMainRecipe: {fileID: 994718830}
   itemsFactory: {fileID: 210951503}
 --- !u!114 &1824929171
 MonoBehaviour:

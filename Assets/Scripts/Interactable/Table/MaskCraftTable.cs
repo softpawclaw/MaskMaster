@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using DB;
 using Enums;
 using Global;
@@ -95,9 +95,6 @@ namespace Interactable.Table
                 Destroy(trayResources[i].gameObject);
             }
 
-            // MVP-заглушка:
-            // после успешного крафта принудительно вычищаем holder рецептов,
-            // удаляя и paper stack, и вложенные recipe pages/children.
             if (recipeHolder != null)
             {
                 recipeHolder.EmergencyClearAndDestroy();
@@ -240,6 +237,11 @@ namespace Interactable.Table
             return new DBMask.MaskData(
                 targetMaskData.Id,
                 targetMaskData.OR_Id,
+                targetMaskData.ClientId,
+                targetMaskData.FaceCoverId,
+                targetMaskData.MistResistanceId,
+                targetMaskData.DistrictId,
+                targetMaskData.FactionId,
                 targetMaskData.Size,
                 actualMaterial,
                 actualSockets

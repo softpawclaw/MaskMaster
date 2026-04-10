@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using DB;
 using Enums;
 using Global;
@@ -23,12 +23,7 @@ namespace Interactable
         private DelayedDialogSystem delayedDialogSystem = null;
 
         private int currentDialog = 0;
-
-        // false -> в Request сначала просто показываем prompt-диалог
-        // true  -> следующий интеракт в Request уже пытается принять маску
         private bool requestPromptShown = false;
-
-        // true -> текущий заказ уже завершён через это окно, повторно его закрывать нельзя
         private bool currentOrderFinalized = false;
 
         public void Link()
@@ -50,6 +45,8 @@ namespace Interactable
             currentDialog = 0;
             requestPromptShown = false;
             currentOrderFinalized = false;
+
+            Debug.Log($"OrderWindowInteractable: order selected. OR_Id={currentMask.OR_Id}, ClientId={currentMask.ClientId}");
         }
 
         protected override void OnInteract(GameObject interactor)
@@ -139,7 +136,7 @@ namespace Interactable
             var paperStack = itemsFactory.CreatePaperStack();
             playerHandsController.GiveItem(paperStack);
 
-            questSystem.ChangeQuestState(); // Start -> Await
+            questSystem.ChangeQuestState();
             CompleteInteraction(playerHandsController.gameObject);
         }
 
@@ -178,7 +175,7 @@ namespace Interactable
             playerHandsController.FreeItem(mask);
             Destroy(mask.gameObject);
 
-            questSystem.ChangeQuestState(); // Request -> Success
+            questSystem.ChangeQuestState();
 
             currentDialog = 0;
             OnNextDialog?.Invoke();
