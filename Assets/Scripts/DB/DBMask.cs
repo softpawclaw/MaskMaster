@@ -1,24 +1,10 @@
 using System;
-using Enums;
 using UnityEngine;
 
 namespace DB
 {
     public class DBMask : MonoBehaviour
     {
-        [Serializable]
-        public struct MaskSocketResource
-        {
-            public MaskSocket Socket;
-            public ResourceType ResourceType;
-
-            public MaskSocketResource(MaskSocket socket, ResourceType resourceType)
-            {
-                Socket = socket;
-                ResourceType = resourceType;
-            }
-        }
-
         [Serializable]
         public struct MaskData
         {
@@ -29,9 +15,6 @@ namespace DB
             public string MistResistanceId;
             public string DistrictId;
             public string FactionId;
-            public MaskSize Size;
-            public ResourceType Material;
-            public MaskSocketResource[] Sockets;
 
             public MaskData(
                 string id,
@@ -40,10 +23,7 @@ namespace DB
                 string faceCoverId,
                 string mistResistanceId,
                 string districtId,
-                string factionId,
-                MaskSize size,
-                ResourceType material,
-                MaskSocketResource[] sockets)
+                string factionId)
             {
                 Id = id;
                 OR_Id = orId;
@@ -52,9 +32,6 @@ namespace DB
                 MistResistanceId = mistResistanceId;
                 DistrictId = districtId;
                 FactionId = factionId;
-                Size = size;
-                Material = material;
-                Sockets = sockets;
             }
         }
 

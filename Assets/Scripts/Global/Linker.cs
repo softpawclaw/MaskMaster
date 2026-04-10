@@ -24,7 +24,11 @@ namespace Global
         [SerializeField] private DBQuest dbQuest = null;
         [SerializeField] private DBClients dbClients = null;
         [SerializeField] private DBNames dbNames = null;
-        [SerializeField] private DBMainRecipe dbMainRecipe = null;
+        [SerializeField] private DBFaceCover dbFaceCover = null;
+        [SerializeField] private DBMistResistance dbMistResistance = null;
+        [SerializeField] private DBDistrict dbDistrict = null;
+        [SerializeField] private DBFaction dbFaction = null;
+        [SerializeField] private DBMaskCombination dbMaskCombination = null;
         
         [SerializeField] private ItemsFactory itemsFactory = null;
         
@@ -53,7 +57,11 @@ namespace Global
         public DBMask DBMask { private set; get; } = null;
         public DBClients DBClients { private set; get; } = null;
         public DBNames DBNames { private set; get; } = null;
-        public DBMainRecipe DBMainRecipe { private set; get; } = null;
+        public DBFaceCover DBFaceCover { private set; get; } = null;
+        public DBMistResistance DBMistResistance { private set; get; } = null;
+        public DBDistrict DBDistrict { private set; get; } = null;
+        public DBFaction DBFaction { private set; get; } = null;
+        public DBMaskCombination DBMaskCombination { private set; get; } = null;
         
         public ItemsFactory ItemsFactory { private set; get; } = null;
 
@@ -74,7 +82,11 @@ namespace Global
             DBMask = dbMask;
             DBClients = dbClients;
             DBNames = dbNames;
-            DBMainRecipe = dbMainRecipe;
+            DBFaceCover = dbFaceCover;
+            DBMistResistance = dbMistResistance;
+            DBDistrict = dbDistrict;
+            DBFaction = dbFaction;
+            DBMaskCombination = dbMaskCombination;
             
             ItemsFactory = itemsFactory;
             

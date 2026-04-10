@@ -12051,7 +12051,11 @@ GameObject:
   - component: {fileID: 994718829}
   - component: {fileID: 994718828}
   - component: {fileID: 994718832}
-  - component: {fileID: 994718830}
+  - component: {fileID: 994718837}
+  - component: {fileID: 994718836}
+  - component: {fileID: 994718834}
+  - component: {fileID: 994718835}
+  - component: {fileID: 994718833}
   m_Layer: 0
   m_Name: DataBases
   m_TagString: Untagged
@@ -12090,19 +12094,10 @@ MonoBehaviour:
   - Id: MA_1
     OR_Id: OR_10
     ClientId: CL_1
-    FaceCoverId: FC_5
+    FaceCoverId: FC_2
     MistResistanceId: MR_1
     DistrictId: D_0
-    FactionId: F_2
-    Size: 3
-    Material: 1
-    Sockets:
-    - Socket: 3
-      ResourceType: 10
-    - Socket: 5
-      ResourceType: 11
-    - Socket: 7
-      ResourceType: 12
+    FactionId: F_1
   - Id: MA_2
     OR_Id: OR_11
     ClientId: CL_0
@@ -12110,15 +12105,6 @@ MonoBehaviour:
     MistResistanceId: MR_0
     DistrictId: D_1
     FactionId: F_0
-    Size: 3
-    Material: 1
-    Sockets:
-    - Socket: 3
-      ResourceType: 10
-    - Socket: 5
-      ResourceType: 11
-    - Socket: 7
-      ResourceType: 12
 --- !u!114 &994718829
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12162,51 +12148,6 @@ MonoBehaviour:
     - State: 5
       DI_Id:
       - DI_15
---- !u!114 &994718830
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 994718826}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7eddb3e19acd2cf4492169a002331559, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DB.DBMainRecipe
-  config:
-  - Id: FC_0
-    Value: "\u0427\u0435\u043B\u044E\u0441\u0442\u044C"
-  - Id: FC_1
-    Value: "\u0413\u043B\u0430\u0437\u0430"
-  - Id: FC_2
-    Value: "\u041B\u043E\u0431"
-  - Id: FC_3
-    Value: "\u041F\u043E\u043B\u0443\u043C\u0430\u0441\u043A\u0430 \u0432\u0435\u0440\u0445"
-  - Id: FC_4
-    Value: "\u041F\u043E\u043B\u0443\u043C\u0430\u0441\u043A\u0430 \u043D\u0438\u0437"
-  - Id: FC_5
-    Value: "\u041F\u043E\u043B\u043D\u0430\u044F"
-  - Id: MR_0
-    Value: "\u041D\u0438\u0437\u043A\u0430\u044F"
-  - Id: MR_1
-    Value: "\u0421\u0440\u0435\u0434\u043D\u044F\u044F"
-  - Id: MR_2
-    Value: "\u0412\u044B\u0441\u043E\u043A\u0430\u044F"
-  - Id: D_0
-    Value: "\u0420\u0430\u0439\u043E\u043D0"
-  - Id: D_1
-    Value: "\u0420\u0430\u0439\u043E\u043D1"
-  - Id: D_2
-    Value: "\u0420\u0430\u0439\u043E\u043D2"
-  - Id: F_0
-    Value: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F0"
-  - Id: F_1
-    Value: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F1"
-  - Id: F_2
-    Value: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F2"
-  - Id: F_3
-    Value: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F3"
 --- !u!114 &994718831
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12259,6 +12200,141 @@ MonoBehaviour:
       \u0437\u0430\u043D\u0438\u043C\u0430\u0435\u0442 \u043D\u0435\u043A\u043E\u0442\u043E\u0440\u043E\u0435
       \u043A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E \u043C\u0435\u0441\u0442\u0430
       \u043D\u0430 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435"
+--- !u!114 &994718833
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 994718826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f8b73570ed14b441ae0297355a68b24, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DB.DBMaskCombination
+  config:
+  - Id: D_0_F_0
+    Sockets:
+    - Socket: 3
+      ResourceType: 11
+    - Socket: 5
+      ResourceType: 12
+    - Socket: 7
+      ResourceType: 13
+  - Id: D_0_F_1
+    Sockets:
+    - Socket: 3
+      ResourceType: 11
+    - Socket: 5
+      ResourceType: 12
+    - Socket: 7
+      ResourceType: 13
+  - Id: D_1_F_0
+    Sockets:
+    - Socket: 3
+      ResourceType: 11
+    - Socket: 5
+      ResourceType: 12
+    - Socket: 7
+      ResourceType: 13
+  - Id: D_1_F_1
+    Sockets:
+    - Socket: 3
+      ResourceType: 11
+    - Socket: 5
+      ResourceType: 12
+    - Socket: 7
+      ResourceType: 13
+--- !u!114 &994718834
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 994718826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0112205e54704b04589bc1653a4c5a6b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DB.DBFaction
+  config:
+  - Id: F_0
+    RecipeName: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F0"
+  - Id: F_1
+    RecipeName: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F1"
+--- !u!114 &994718835
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 994718826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f1fc682570aa4246b7d73b4d3b82d0a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DB.DBDistrict
+  config:
+  - Id: D_0
+    RecipeName: "\u0420\u0430\u0439\u043E\u043D0"
+  - Id: D_1
+    RecipeName: "\u0420\u0430\u0439\u043E\u043D1"
+--- !u!114 &994718836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 994718826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fae37d55a93c2e40bfcb8dcd9883cc8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DB.DBMistResistance
+  config:
+  - Id: MR_0
+    RecipeName: "\u041D\u0438\u0437\u043A\u0430\u044F"
+    ProductionName: 
+    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    ResourceType: 1
+  - Id: MR_1
+    RecipeName: "\u0421\u0440\u0435\u0434\u043D\u044F\u044F"
+    ProductionName: 
+    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    ResourceType: 2
+  - Id: MR_2
+    RecipeName: "\u0412\u044B\u0441\u043E\u043A\u0430\u044F"
+    ProductionName: 
+    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    ResourceType: 3
+--- !u!114 &994718837
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 994718826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d3848764dd8be747b2a6b76b1c9b4c2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DB.DBFaceCover
+  config:
+  - Id: FC_0
+    RecipeName: "\u041C\u0430\u043B\u0435\u043D\u044C\u043A\u0430\u044F"
+    ProductionName: 
+    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    MaskSize: 1
+  - Id: FC_1
+    RecipeName: "\u0421\u0440\u0435\u0434\u043D\u044F\u044F"
+    ProductionName: 
+    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    MaskSize: 2
+  - Id: FC_2
+    RecipeName: "\u041F\u043E\u043B\u043D\u0430\u044F"
+    ProductionName: 
+    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    MaskSize: 3
 --- !u!1001 &1002609968
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -19808,7 +19884,11 @@ MonoBehaviour:
   dbQuest: {fileID: 994718829}
   dbClients: {fileID: 994718832}
   dbNames: {fileID: 994718831}
-  dbMainRecipe: {fileID: 994718830}
+  dbFaceCover: {fileID: 994718837}
+  dbMistResistance: {fileID: 994718836}
+  dbDistrict: {fileID: 994718835}
+  dbFaction: {fileID: 994718834}
+  dbMaskCombination: {fileID: 994718833}
   itemsFactory: {fileID: 210951503}
 --- !u!114 &1824929171
 MonoBehaviour:

@@ -40,9 +40,9 @@ namespace Items
         public string MistResistanceId => maskData.MistResistanceId;
         public string DistrictId => maskData.DistrictId;
         public string FactionId => maskData.FactionId;
-        public MaskSize MaskSize => maskData.Size;
-        public ResourceType Material => maskData.Material;
-        public DBMask.MaskSocketResource[] Sockets => maskData.Sockets;
+        public MaskSize MaskSize => ResolveMaskSize();
+        public ResourceType Material => GetBlankResourceType();
+        public DBMaskCombination.MaskSocketResource[] Sockets => GetExpectedSockets();
 
         public void Init(DBMask.MaskData data)
         {
@@ -82,33 +82,63 @@ namespace Items
             SetText(factionLabelText, factionLabel);
 
             SetText(clientDescriptionText, ResolveClientDescription(maskData.ClientId, maskData.ClientId));
-            SetText(faceCoverValueText, ResolveTag(maskData.FaceCoverId));
-            SetText(mistResistanceValueText, ResolveTag(maskData.MistResistanceId));
-            SetText(districtValueText, ResolveTag(maskData.DistrictId));
-            SetText(factionValueText, ResolveTag(maskData.FactionId));
+            SetText(faceCoverValueText, ResolveFaceCover(maskData.FaceCoverId));
+            SetText(mistResistanceValueText, ResolveMistResistance(maskData.MistResistanceId));
+            SetText(districtValueText, ResolveDistrict(maskData.DistrictId));
+            SetText(factionValueText, ResolveFaction(maskData.FactionId));
         }
 
         public ResourceType GetBlankResourceType()
         {
-            return maskData.Material;
+            var linker = Linker.Instance;
+            if (linker != null && linker.DBMistResistance != null && linker.DBMistResistance.TryGetResourceType(maskData.MistResistanceId, out var resourceType))
+            {
+                return resourceType;
+            }
+
+            return ResourceType.None;
+        }
+
+        public MaskSize ResolveMaskSize()
+        {
+            var linker = Linker.Instance;
+            if (linker != null && linker.DBFaceCover != null && linker.DBFaceCover.TryGetData(maskData.FaceCoverId, out var faceCoverData))
+            {
+                return faceCoverData.MaskSize;
+            }
+
+            return MaskSize.None;
+        }
+
+        public DBMaskCombination.MaskSocketResource[] GetExpectedSockets()
+        {
+            var linker = Linker.Instance;
+            if (linker != null && linker.DBMaskCombination != null && linker.DBMaskCombination.TryGetCombination(maskData.DistrictId, maskData.FactionId, out var combination))
+            {
+                return combination.Sockets;
+            }
+
+            return null;
         }
 
         public List<ResourceType> GetAllRequiredResourceTypes()
         {
             var result = new List<ResourceType>();
+            var material = GetBlankResourceType();
 
-            if (maskData.Material != ResourceType.None)
+            if (material != ResourceType.None)
             {
-                result.Add(maskData.Material);
+                result.Add(material);
             }
 
-            if (maskData.Sockets != null)
+            var sockets = GetExpectedSockets();
+            if (sockets != null)
             {
-                for (int i = 0; i < maskData.Sockets.Length; i++)
+                for (int i = 0; i < sockets.Length; i++)
                 {
-                    if (maskData.Sockets[i].ResourceType != ResourceType.None)
+                    if (sockets[i].ResourceType != ResourceType.None)
                     {
-                        result.Add(maskData.Sockets[i].ResourceType);
+                        result.Add(sockets[i].ResourceType);
                     }
                 }
             }
@@ -135,15 +165,48 @@ namespace Items
             return fallback;
         }
 
-        private string ResolveTag(string tagId)
+        private string ResolveFaceCover(string id)
         {
             var linker = Linker.Instance;
-            if (linker != null && linker.DBMainRecipe != null && linker.DBMainRecipe.TryGetValue(tagId, out var value))
+            if (linker != null && linker.DBFaceCover != null && linker.DBFaceCover.TryGetRecipeName(id, out var value))
             {
                 return value;
             }
 
-            return tagId;
+            return id;
+        }
+
+        private string ResolveMistResistance(string id)
+        {
+            var linker = Linker.Instance;
+            if (linker != null && linker.DBMistResistance != null && linker.DBMistResistance.TryGetRecipeName(id, out var value))
+            {
+                return value;
+            }
+
+            return id;
+        }
+
+        private string ResolveDistrict(string id)
+        {
+            var linker = Linker.Instance;
+            if (linker != null && linker.DBDistrict != null && linker.DBDistrict.TryGetRecipeName(id, out var value))
+            {
+                return value;
+            }
+
+            return id;
+        }
+
+        private string ResolveFaction(string id)
+        {
+            var linker = Linker.Instance;
+            if (linker != null && linker.DBFaction != null && linker.DBFaction.TryGetRecipeName(id, out var value))
+            {
+                return value;
+            }
+
+            return id;
         }
 
         private string ResolveName(string nameId, string fallback)

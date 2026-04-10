@@ -61,7 +61,7 @@ namespace Interactable.Table
             if (!TryGetTrayResources(out var trayResources))
                 return false;
 
-            return HasRequiredTopLevelResources(recipe.MaskData, trayResources);
+            return HasRequiredTopLevelResources(recipe, trayResources);
         }
 
         public bool TryCraft(GameObject interactor)
@@ -80,14 +80,14 @@ namespace Interactable.Table
                 return false;
             }
 
-            if (!HasRequiredTopLevelResources(recipe.MaskData, trayResources))
+            if (!HasRequiredTopLevelResources(recipe, trayResources))
             {
                 Debug.Log("MaskCraftTable: tray resources do not match required top-level recipe groups.");
                 RefreshState();
                 return false;
             }
 
-            var actualMaskData = BuildActualMaskData(recipe.MaskData, trayResources);
+            var actualMaskData = BuildActualMaskData(recipe, trayResources);
 
             for (int i = 0; i < trayResources.Count; i++)
             {
@@ -156,13 +156,16 @@ namespace Interactable.Table
             return trayResources.Count > 0;
         }
 
-        private bool HasRequiredTopLevelResources(DBMask.MaskData targetMaskData, List<ResourceItem> trayResources)
+        private bool HasRequiredTopLevelResources(MainRecipeItem recipe, List<ResourceItem> trayResources)
         {
-            if (trayResources == null || trayResources.Count == 0)
+            if (recipe == null || trayResources == null || trayResources.Count == 0)
                 return false;
 
-            int requiredBlankCount = targetMaskData.Material != ResourceType.None ? 1 : 0;
-            int requiredInlayCount = targetMaskData.Sockets != null ? targetMaskData.Sockets.Length : 0;
+            var expectedMaterial = recipe.GetBlankResourceType();
+            var expectedSockets = recipe.GetExpectedSockets();
+
+            int requiredBlankCount = expectedMaterial != ResourceType.None ? 1 : 0;
+            int requiredInlayCount = expectedSockets != null ? expectedSockets.Length : 0;
 
             int actualBlankCount = 0;
             int actualInlayCount = 0;
@@ -196,56 +199,9 @@ namespace Interactable.Table
             return true;
         }
 
-        private DBMask.MaskData BuildActualMaskData(DBMask.MaskData targetMaskData, List<ResourceItem> trayResources)
+        private DBMask.MaskData BuildActualMaskData(MainRecipeItem recipe, List<ResourceItem> trayResources)
         {
-            ResourceType actualMaterial = ResourceType.None;
-
-            int socketCount = targetMaskData.Sockets != null ? targetMaskData.Sockets.Length : 0;
-            var actualSockets = new DBMask.MaskSocketResource[socketCount];
-
-            int socketWriteIndex = 0;
-
-            for (int i = 0; i < trayResources.Count; i++)
-            {
-                var resource = trayResources[i];
-                if (resource == null) continue;
-
-                var resourceType = resource.Type;
-
-                if (ResourceTypeHelper.IsBlank(resourceType))
-                {
-                    if (actualMaterial == ResourceType.None)
-                        actualMaterial = resourceType;
-
-                    continue;
-                }
-
-                if (!ResourceTypeHelper.IsInlay(resourceType))
-                    continue;
-
-                if (socketWriteIndex >= actualSockets.Length)
-                    continue;
-
-                actualSockets[socketWriteIndex] = new DBMask.MaskSocketResource(
-                    targetMaskData.Sockets[socketWriteIndex].Socket,
-                    resourceType
-                );
-
-                socketWriteIndex++;
-            }
-
-            return new DBMask.MaskData(
-                targetMaskData.Id,
-                targetMaskData.OR_Id,
-                targetMaskData.ClientId,
-                targetMaskData.FaceCoverId,
-                targetMaskData.MistResistanceId,
-                targetMaskData.DistrictId,
-                targetMaskData.FactionId,
-                targetMaskData.Size,
-                actualMaterial,
-                actualSockets
-            );
+            return recipe.MaskData;
         }
 
         private void OnDestroy()
