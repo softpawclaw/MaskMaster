@@ -26,6 +26,9 @@ public class PlayerController : MonoBehaviour
     private float pitch;
     private float verticalVel;
 
+    public Transform CameraPivot => cameraPivot;
+    public float Pitch => pitch;
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -76,5 +79,20 @@ public class PlayerController : MonoBehaviour
         {
             InteractPressed?.Invoke();
         }
+    }
+
+    public void SetPitch(float value)
+    {
+        pitch = Mathf.Clamp(value, pitchMin, pitchMax);
+
+        if (cameraPivot != null)
+            cameraPivot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+    }
+
+    public void ResetRuntimeInput()
+    {
+        moveInput = Vector2.zero;
+        lookInput = Vector2.zero;
+        verticalVel = 0f;
     }
 }
