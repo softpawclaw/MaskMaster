@@ -60,6 +60,8 @@ namespace Player
         public bool IsInOverview => runtimeState == RuntimeState.Overview;
         public WorkbenchInteractableBase ActiveWorkbench => activeWorkbench;
 
+        public string WorkbenchActionMapName => workbenchActionMap;
+
         private void Awake()
         {
             if (playerController == null) playerController = GetComponent<PlayerController>();
@@ -71,13 +73,14 @@ namespace Player
 
         private void OnEnable()
         {
-            ResolveActions();
-            SubscribeActions();
+            RebindCurrentMapActions();
         }
 
         private void OnDisable()
         {
             UnsubscribeActions();
+            lookAction = null;
+            interactAction = null;
         }
 
         private void Update()
@@ -169,7 +172,7 @@ namespace Player
             if (characterController != null)
                 characterController.enabled = false;
 
-            SwitchActionMap(workbenchActionMap);
+            SwitchWorkbenchActionMap(workbenchActionMap);
             ApplyCursorState(false, CursorLockMode.Locked);
 
             ResetCameraLocalPositionToPivotZero();
@@ -372,7 +375,7 @@ namespace Player
             ResetCameraLocalPositionToPivotZero();
             SetCameraLocalRotationToOverviewPitch(NormalizeAngle(returnPitch));
 
-            SwitchActionMap(previousActionMap);
+            SwitchWorkbenchActionMap(previousActionMap);
 
             if (characterController != null)
                 characterController.enabled = true;
@@ -468,15 +471,6 @@ namespace Player
             interactWasPressed = true;
         }
 
-        private void ResolveActions()
-        {
-            if (playerInput == null || playerInput.actions == null)
-                return;
-
-            lookAction = !string.IsNullOrWhiteSpace(lookActionName) ? playerInput.actions[lookActionName] : null;
-            interactAction = !string.IsNullOrWhiteSpace(interactActionName) ? playerInput.actions[interactActionName] : null;
-        }
-
         private void SubscribeActions()
         {
             if (interactAction != null)
@@ -520,15 +514,46 @@ namespace Player
             return angle;
         }
 
-        private void SwitchActionMap(string actionMapName)
+        public void SwitchWorkbenchActionMap(string actionMapName)
         {
             if (playerInput == null) return;
             if (string.IsNullOrWhiteSpace(actionMapName)) return;
             if (playerInput.actions == null) return;
-            if (playerInput.currentActionMap != null && playerInput.currentActionMap.name == actionMapName) return;
-            if (playerInput.actions.FindActionMap(actionMapName, false) == null) return;
 
-            playerInput.SwitchCurrentActionMap(actionMapName);
+            InputActionMap targetMap = playerInput.actions.FindActionMap(actionMapName, false);
+            if (targetMap == null) return;
+
+            UnsubscribeActions();
+
+            if (playerInput.currentActionMap == null || playerInput.currentActionMap.name != actionMapName)
+                playerInput.SwitchCurrentActionMap(actionMapName);
+
+            RefreshResolvedActions();
+            SubscribeActions();
+        }
+
+        private void RebindCurrentMapActions()
+        {
+            UnsubscribeActions();
+            RefreshResolvedActions();
+            SubscribeActions();
+        }
+        
+        private void RefreshResolvedActions()
+        {
+            lookAction = null;
+            interactAction = null;
+
+            if (playerInput == null) return;
+
+            InputActionMap currentMap = playerInput.currentActionMap;
+            if (currentMap == null) return;
+
+            if (!string.IsNullOrWhiteSpace(lookActionName))
+                lookAction = currentMap.FindAction(lookActionName, false);
+
+            if (!string.IsNullOrWhiteSpace(interactActionName))
+                interactAction = currentMap.FindAction(interactActionName, false);
         }
 
         private void ResetCameraLocalPositionToPivotZero()

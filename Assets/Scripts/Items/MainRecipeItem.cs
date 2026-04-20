@@ -55,6 +55,13 @@ namespace Items
             RefreshVisuals();
         }
 
+        public override void OnTakenToHand(Transform handSocket)
+        {
+            base.OnTakenToHand(handSocket);
+            gameObject.SetActive(true);
+            RefreshVisuals();
+        }
+
 #if UNITY_EDITOR
         private void OnValidate()
         {
@@ -151,7 +158,18 @@ namespace Items
             if (target == null)
                 return;
 
+            if (target.gameObject != null && !target.gameObject.activeSelf)
+            {
+                target.gameObject.SetActive(true);
+            }
+
+            if (!target.enabled)
+            {
+                target.enabled = true;
+            }
+
             target.text = value;
+            target.ForceMeshUpdate(true, true);
         }
 
         private string ResolveClientDescription(string clientId, string fallback)

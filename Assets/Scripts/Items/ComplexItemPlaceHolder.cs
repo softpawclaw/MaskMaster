@@ -125,6 +125,43 @@ namespace Items
             NotifyContentChanged();
         }
 
+
+        public void AttachExternalContainer(ContainerItemBase container)
+        {
+            if (container == null)
+                return;
+
+            if (currentContainer != null || currentItem != null || placedContent.Count > 0)
+            {
+                EmergencyClearAndDestroy();
+            }
+
+            AttachItem(container);
+        }
+
+        public ContainerItemBase DetachCurrentContainer()
+        {
+            if (currentContainer == null)
+                return null;
+
+            var containerToReturn = currentContainer;
+
+            for (int i = 0; i < placedContent.Count; i++)
+            {
+                var child = placedContent[i];
+                if (child == null)
+                    continue;
+
+                containerToReturn.TryAdd(child);
+            }
+
+            placedContent.Clear();
+            currentItem = null;
+            currentContainer = null;
+            NotifyContentChanged();
+            return containerToReturn;
+        }
+
         public void EmergencyClearAndDestroy()
         {
             // MVP-заглушка: аварийная очистка контейнера и всего его содержимого.

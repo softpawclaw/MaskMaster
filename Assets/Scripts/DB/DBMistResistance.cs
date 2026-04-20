@@ -56,5 +56,10 @@ namespace DB
             value = data.ResourceType;
             return true;
         }
+
+        public MistResistanceData[] GetAll()
+        {
+            return config != null ? ( MistResistanceData[] )config.Clone() : System.Array.Empty<MistResistanceData>();
+        }
     }
 }

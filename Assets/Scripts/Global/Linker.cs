@@ -16,7 +16,6 @@ namespace Global
         [SerializeField] private PlayerHandsController playerHandsController = null;
         
         [SerializeField] private OrderWindowInteractable orderWindowInteractable = null;
-        [SerializeField] private CatalogInteractable catalogInteractable = null;
         [SerializeField] private MaskCraftTable maskCraftTable = null;
         [SerializeField] private MaskShelfInteractable maskShelfInteractable = null;
         
@@ -36,7 +35,6 @@ namespace Global
         public PlayerController PlayerController { private set; get; } = null;
         public PlayerHandsController PlayerHandsController { private set; get; } = null;
         public OrderWindowInteractable OrderWindowInteractable { private set; get; } = null;
-        public CatalogInteractable CatalogInteractable { private set; get; } = null;
         public MaskCraftTable MaskCraftTable { private set; get; } = null;
         public MaskShelfInteractable MaskShelfInteractable { private set; get; } = null;
         
@@ -74,7 +72,6 @@ namespace Global
             PlayerHandsController = playerHandsController;
             
             OrderWindowInteractable = orderWindowInteractable;
-            CatalogInteractable = catalogInteractable;
             MaskCraftTable = maskCraftTable;
             MaskShelfInteractable = maskShelfInteractable;
             
@@ -106,7 +103,6 @@ namespace Global
             Instance = this;
 
             OrderWindowInteractable.Link();
-            CatalogInteractable.Link();
             MaskCraftTable.Link();
             MaskShelfInteractable.Link();
             

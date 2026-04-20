@@ -20,6 +20,9 @@ namespace Interactable.Table
         [Header("Output")]
         [SerializeField] private MaskOutputInteractable outputInteractable;
 
+        [Header("Linked Workbenches")]
+        [SerializeField] private Workbench.CatalogWorkbench catalogWorkbench;
+
         private ItemsFactory itemsFactory;
 
         public void Link()
@@ -102,6 +105,11 @@ namespace Interactable.Table
 
             var mask = itemsFactory.CreateMask(recipe.MaskData, actualMaskData);
             outputInteractable.SetItem(mask);
+
+            if (catalogWorkbench != null)
+            {
+                catalogWorkbench.ResetCatalogState();
+            }
 
             RefreshState();
             return true;

@@ -32,5 +32,10 @@ namespace DB
 
             return false;
         }
+
+        public FactionData[] GetAll()
+        {
+            return config != null ? ( FactionData[] )config.Clone() : System.Array.Empty<FactionData>();
+        }
     }
 }

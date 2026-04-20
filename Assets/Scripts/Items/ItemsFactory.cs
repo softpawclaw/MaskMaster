@@ -1,4 +1,4 @@
-﻿using DB;
+using DB;
 using Enums;
 using UnityEngine;
 
@@ -27,6 +27,13 @@ namespace Items
         {
             var instance = Instantiate(catalogPagePrefab);
             instance.Init(resourceType);
+            return instance;
+        }
+
+        public CatalogPageItem CreateCatalogPage(CatalogPageItem.CatalogPageKind kind, string valueId, string drawerId, ResourceType resourceType = ResourceType.None)
+        {
+            var instance = Instantiate(catalogPagePrefab);
+            instance.Init(kind, valueId, drawerId, resourceType);
             return instance;
         }
 

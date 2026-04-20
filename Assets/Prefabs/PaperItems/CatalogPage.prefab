@@ -141,4 +141,7 @@ MonoBehaviour:
   preferredHand: 0
   canStackInHand: 1
   isSelectableInStack: 1
+  pageKind: 0
+  pageValueId: 
+  sourceDrawerId: 
   resourceType: 10

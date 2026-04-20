@@ -33,6 +33,32 @@ namespace Items
             base.OnRemovedFromHand();
         }
 
+        public bool TryAddPage(ItemBase item)
+        {
+            return TryAdd(item);
+        }
+
+        public ItemBase TryRemoveSelected()
+        {
+            var selected = GetSelectedItem();
+            if (selected == null) return null;
+            if (!TryRemove(selected)) return null;
+            selected.gameObject.SetActive(true);
+            return selected;
+        }
+
+        public void MergeFrom(PaperStackItem other)
+        {
+            if (other == null || other == this) return;
+            var extracted = other.ExtractAllItems();
+            for (int i = 0; i < extracted.Count; i++)
+            {
+                var item = extracted[i];
+                if (item == null) continue;
+                TryAdd(item);
+            }
+        }
+
         public override ItemBase GetSelectedItem()
         {
             if (items.Count == 0) return null;

@@ -46,5 +46,10 @@ namespace DB
             value = data.RecipeName;
             return true;
         }
+
+        public FaceCoverData[] GetAll()
+        {
+            return config != null ? ( FaceCoverData[] )config.Clone() : System.Array.Empty<FaceCoverData>();
+        }
     }
 }

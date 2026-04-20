@@ -32,5 +32,10 @@ namespace DB
 
             return false;
         }
+
+        public DistrictData[] GetAll()
+        {
+            return config != null ? ( DistrictData[] )config.Clone() : System.Array.Empty<DistrictData>();
+        }
     }
 }
