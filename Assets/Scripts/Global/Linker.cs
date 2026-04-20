@@ -6,6 +6,7 @@ using Player;
 using Systems;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 namespace Global
 {
@@ -28,6 +29,7 @@ namespace Global
         [SerializeField] private DBDistrict dbDistrict = null;
         [SerializeField] private DBFaction dbFaction = null;
         [SerializeField] private DBMaskCombination dbMaskCombination = null;
+        [FormerlySerializedAs("catalogPageDatabase")] [SerializeField] private DBCatalogPage dbCatalogPage = null;
         
         [SerializeField] private ItemsFactory itemsFactory = null;
         
@@ -60,6 +62,7 @@ namespace Global
         public DBDistrict DBDistrict { private set; get; } = null;
         public DBFaction DBFaction { private set; get; } = null;
         public DBMaskCombination DBMaskCombination { private set; get; } = null;
+        public DBCatalogPage DBCatalogPage { private set; get; } = null;
         
         public ItemsFactory ItemsFactory { private set; get; } = null;
 
@@ -84,6 +87,7 @@ namespace Global
             DBDistrict = dbDistrict;
             DBFaction = dbFaction;
             DBMaskCombination = dbMaskCombination;
+            DBCatalogPage = dbCatalogPage;
             
             ItemsFactory = itemsFactory;
             

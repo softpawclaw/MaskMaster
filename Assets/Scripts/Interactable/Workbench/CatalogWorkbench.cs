@@ -1,10 +1,11 @@
 using System.Collections.Generic;
+using DB;
 using Global;
 using Items;
 using Player;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.InputSystem;
+using Object = UnityEngine.Object;
 
 namespace Interactable.Workbench
 {
@@ -23,38 +24,13 @@ namespace Interactable.Workbench
             Left = 1
         }
 
-        [System.Serializable]
-        private class DrawerRuntimeEvent
-        {
-            public string DrawerId;
-            public UnityEvent OnOpened;
-            public UnityEvent OnClosed;
-        }
-
-        [System.Serializable]
-        private class DrawerConfig
-        {
-            public string DrawerId;
-            public CatalogPageItem.CatalogPageKind PageKind;
-        }
-
-        [Header("Catalog State Events")]
-        [SerializeField] private UnityEvent onOverviewEntered;
-        [SerializeField] private UnityEvent onRecipeInspectEntered;
-        [SerializeField] private UnityEvent onRecipeInspectExited;
-        [SerializeField] private UnityEvent onDrawerInspectEntered;
-        [SerializeField] private UnityEvent onDrawerInspectExited;
-        [SerializeField] private UnityEvent onRightStackActivated;
-        [SerializeField] private UnityEvent onLeftStackActivated;
-        [SerializeField] private DrawerRuntimeEvent[] drawerEvents;
-
         [Header("Runtime Holders")]
         [SerializeField] private MainRecipeDisplaySlot mainRecipeSlot;
         [SerializeField] private ComplexItemPlaceHolder selectedPagesHolder;
         [SerializeField] private ComplexItemPlaceHolder activeDrawerHolder;
 
-        [Header("Drawers")]
-        [SerializeField] private DrawerConfig[] drawerConfigs;
+        [Header("Catalog Drawers")]
+        [SerializeField] private CatalogDrawer[] drawers;
 
         [Header("Input Maps")]
         [SerializeField] private string recipeFocusActionMap = "CatalogRecipe";
@@ -66,12 +42,10 @@ namespace Interactable.Workbench
         [SerializeField] private string previousPageActionName = "PreviousPage";
         [SerializeField] private string transferPageActionName = "TransferPage";
 
-        [Header("Legacy Input Fallbacks")]
-        [SerializeField] private string[] toggleActiveStackFallbackActionNames = { "SelectPlace" };
-        [SerializeField] private string[] nextPageFallbackActionNames = { "Next", "FlipPage" };
-        [SerializeField] private string[] previousPageFallbackActionNames = { "Previous" };
-        [SerializeField] private string[] transferPageFallbackActionNames = { "Interact" };
-
+        [Header("Stack Highlights")]
+        [SerializeField] private GameObject rightStackHighlight;
+        [SerializeField] private GameObject leftStackHighlight;
+        
         private CatalogState catalogState = CatalogState.Overview;
         private StackSide activeStackSide = StackSide.Right;
         private WorkbenchFocusTarget activeTarget;
@@ -79,6 +53,7 @@ namespace Interactable.Workbench
         private ItemsFactory itemsFactory;
         private PlayerHandsController handsController;
         private PlayerInput playerInput;
+        private DBCatalogPage catalogPageDatabase;
 
         private InputAction toggleActiveStackAction;
         private InputAction nextPageAction;
@@ -86,16 +61,22 @@ namespace Interactable.Workbench
         private InputAction transferPageAction;
         private bool inputSubscribed;
 
-        private readonly Dictionary<string, List<CatalogPageItem>> drawerContents = new();
+        private readonly Dictionary<string, CatalogDrawer> drawerMap = new();
         private PaperStackItem selectedPagesStack;
         private PaperStackItem activeDrawerStack;
-        private string activeDrawerId;
+        private CatalogDrawer activeDrawer;
+
+        private void Awake()
+        {
+            RefreshStackHighlights();
+        }
 
         private void OnEnable()
         {
             EnsureReferences();
             RefreshInputActionsForCurrentMap();
             SubscribeInputActions();
+            RefreshStackHighlights();
         }
 
         private void OnDisable()
@@ -106,7 +87,7 @@ namespace Interactable.Workbench
         public override void OnWorkbenchEntered(PlayerWorkbenchModeController controller)
         {
             EnsureReferences();
-            EnsureCatalogDataBuilt();
+            EnsureDrawersLinked();
             EnsureRuntimeStacks();
             RefreshInputActionsForCurrentMap();
             SubscribeInputActions();
@@ -115,30 +96,28 @@ namespace Interactable.Workbench
             base.OnWorkbenchEntered(controller);
             catalogState = CatalogState.Overview;
             activeTarget = null;
+            activeDrawer = null;
             SetActiveStack(StackSide.Right);
+            RefreshStackHighlights();
             controller?.SwitchWorkbenchActionMap(controller.WorkbenchActionMapName);
-            onOverviewEntered?.Invoke();
+            RefreshStackViews();
         }
 
         public override void OnWorkbenchExited(PlayerWorkbenchModeController controller)
         {
-            if (catalogState == CatalogState.RecipeInspect)
-                onRecipeInspectExited?.Invoke();
-
             if (catalogState == CatalogState.DrawerInspect)
             {
-                onDrawerInspectExited?.Invoke();
-                InvokeDrawerClosed(activeTarget?.TargetId);
+                ClearActiveDrawerRuntimePages();
             }
 
-            ReturnAllDrawerPagesFromActiveStack();
             ReturnPaperStackToPlayerIfNeeded();
             CleanupRuntimeStacks();
 
             activeTarget = null;
-            activeDrawerId = null;
+            activeDrawer = null;
             catalogState = CatalogState.Overview;
             SetActiveStack(StackSide.Right);
+            RefreshStackHighlights();
             base.OnWorkbenchExited(controller);
         }
 
@@ -147,8 +126,7 @@ namespace Interactable.Workbench
             if (target == null) return;
 
             PlayerWorkbenchModeController controller = FindController();
-            if (controller == null) return;
-            if (!controller.IsInOverview) return;
+            if (controller == null || !controller.IsInOverview) return;
             if (target.LockedView == null)
             {
                 Debug.LogWarning($"{name}: Focus target '{target.name}' has no locked view assigned.");
@@ -161,18 +139,16 @@ namespace Interactable.Workbench
             {
                 case WorkbenchFocusTarget.FocusKind.Recipe:
                     catalogState = CatalogState.RecipeInspect;
-                    onRecipeInspectEntered?.Invoke();
                     mainRecipeSlot?.RefreshVisual();
                     controller.RequestLockedView(target, target.LockedView, LockedViewDuration);
                     break;
 
                 case WorkbenchFocusTarget.FocusKind.Drawer:
                     catalogState = CatalogState.DrawerInspect;
-                    onDrawerInspectEntered?.Invoke();
                     OpenDrawer(target.TargetId);
                     SetActiveStack(StackSide.Right);
-                    InvokeDrawerOpened(target.TargetId);
                     controller.RequestLockedView(target, target.LockedView, LockedViewDuration);
+                    RefreshStackHighlights();
                     break;
 
                 default:
@@ -186,21 +162,21 @@ namespace Interactable.Workbench
             PlayerWorkbenchModeController controller = FindController();
             if (controller == null) return;
 
-            if (catalogState == CatalogState.RecipeInspect)
-                onRecipeInspectExited?.Invoke();
-
             if (catalogState == CatalogState.DrawerInspect)
             {
-                onDrawerInspectExited?.Invoke();
-                InvokeDrawerClosed(activeTarget?.TargetId);
+                ClearActiveDrawerRuntimePages();
             }
 
             catalogState = CatalogState.Overview;
             activeTarget = null;
+            activeDrawer = null;
+
+            RefreshStackHighlights();
+
             controller.SwitchWorkbenchActionMap(controller.WorkbenchActionMapName);
             RefreshInputActionsForCurrentMap();
             SubscribeInputActions();
-            onOverviewEntered?.Invoke();
+            RefreshStackViews();
             controller.ReturnToOverview(LockedViewDuration);
         }
 
@@ -224,16 +200,6 @@ namespace Interactable.Workbench
 
             RefreshInputActionsForCurrentMap();
             SubscribeInputActions();
-        }
-
-        public void SetActiveStackRight()
-        {
-            SetActiveStack(StackSide.Right);
-        }
-
-        public void SetActiveStackLeft()
-        {
-            SetActiveStack(StackSide.Left);
         }
 
         public void ToggleActiveStack()
@@ -263,10 +229,13 @@ namespace Interactable.Workbench
             if (activeStackSide == StackSide.Right)
             {
                 activeDrawerStack?.SelectNext();
-                return;
+            }
+            else
+            {
+                selectedPagesStack?.SelectNext();
             }
 
-            selectedPagesStack?.SelectNext();
+            RefreshStackViews();
         }
 
         public void SelectPreviousActiveStackPage()
@@ -277,41 +246,74 @@ namespace Interactable.Workbench
             if (activeStackSide == StackSide.Right)
             {
                 activeDrawerStack?.SelectPrevious();
-                return;
+            }
+            else
+            {
+                selectedPagesStack?.SelectPrevious();
             }
 
-            selectedPagesStack?.SelectPrevious();
+            RefreshStackViews();
         }
 
         public void MoveSelectedPageRightToLeft()
         {
-            if (activeDrawerStack == null || selectedPagesStack == null) return;
-            var page = activeDrawerStack.TryRemoveSelected() as CatalogPageItem;
-            if (page == null) return;
-            selectedPagesStack.TryAddPage(page);
+            if (activeDrawer == null || activeDrawerStack == null || selectedPagesStack == null)
+                return;
+
+            CatalogPageItem page = activeDrawerStack.TryRemoveSelected() as CatalogPageItem;
+            if (page == null)
+                return;
+
+            if (!selectedPagesStack.TryAddPage(page))
+            {
+                activeDrawerStack.TryAddPage(page);
+                RefreshAfterMoveRightToLeft();
+                return;
+            }
+
+            activeDrawer.RemovePage(page.PageId);
+            RefreshAfterMoveRightToLeft();
         }
 
         public void MoveSelectedPageLeftToRight()
         {
-            if (selectedPagesStack == null) return;
-            var page = selectedPagesStack.TryRemoveSelected() as CatalogPageItem;
-            if (page == null) return;
+            if (selectedPagesStack == null)
+                return;
 
-            if (!string.IsNullOrWhiteSpace(activeDrawerId) && page.SourceDrawerId == activeDrawerId && activeDrawerStack != null)
+            CatalogPageItem page = selectedPagesStack.TryRemoveSelected() as CatalogPageItem;
+            if (page == null)
+                return;
+
+            CatalogDrawer sourceDrawer = FindDrawerById(page.SourceDrawerId);
+            bool returningToActiveDrawer = activeDrawer != null && sourceDrawer == activeDrawer;
+
+            if (returningToActiveDrawer && activeDrawerStack != null)
             {
-                activeDrawerStack.TryAddPage(page);
+                if (activeDrawerStack.TryAddPage(page))
+                {
+                    activeDrawer.AddPage(page.PageId);
+                }
+                else
+                {
+                    selectedPagesStack.TryAddPage(page);
+                }
+
+                RefreshAfterMoveLeftToRight();
                 return;
             }
 
-            AddPageBackToSourceDrawer(page);
+            if (sourceDrawer != null)
+            {
+                sourceDrawer.AddPage(page.PageId);
+            }
+
+            Object.Destroy(page.gameObject);
+            RefreshAfterMoveLeftToRight();
         }
-
-        public void SelectNextRightStackPage() => activeDrawerStack?.SelectNext();
-        public void SelectNextLeftStackPage() => selectedPagesStack?.SelectNext();
-
+        
         public void ResetCatalogState()
         {
-            ReturnAllDrawerPagesFromActiveStack();
+            ClearActiveDrawerRuntimePages();
             ReturnAllSelectedPagesToSourceDrawers();
 
             if (mainRecipeSlot != null)
@@ -319,16 +321,24 @@ namespace Interactable.Workbench
                 mainRecipeSlot.ClearAndDestroy();
             }
 
+            for (int i = 0; i < drawers.Length; i++)
+            {
+                if (drawers[i] != null)
+                    drawers[i].ResetToInitialState();
+            }
+
             CleanupRuntimeStacks();
-            RebuildDrawerContentsFromDatabases();
             EnsureRuntimeStacks();
-            activeDrawerId = null;
+            activeDrawer = null;
+            activeTarget = null;
+            catalogState = CatalogState.Overview;
             SetActiveStack(StackSide.Right);
+            RefreshStackViews();
         }
 
         private void EnsureReferences()
         {
-            var linker = Linker.Instance;
+            Linker linker = Linker.Instance;
             if (linker == null) return;
 
             if (itemsFactory == null)
@@ -339,6 +349,28 @@ namespace Interactable.Workbench
 
             if (playerInput == null)
                 playerInput = linker.PlayerInput;
+
+            if (catalogPageDatabase == null)
+                catalogPageDatabase = linker.DBCatalogPage;
+        }
+
+        private void EnsureDrawersLinked()
+        {
+            EnsureReferences();
+
+            if (drawers == null || drawers.Length == 0)
+                drawers = GetComponentsInChildren<CatalogDrawer>(true);
+
+            drawerMap.Clear();
+            for (int i = 0; i < drawers.Length; i++)
+            {
+                CatalogDrawer drawer = drawers[i];
+                if (drawer == null || string.IsNullOrWhiteSpace(drawer.DrawerId))
+                    continue;
+
+                drawer.Link(catalogPageDatabase);
+                drawerMap[drawer.DrawerId] = drawer;
+            }
         }
 
         private void RefreshInputActionsForCurrentMap()
@@ -357,10 +389,10 @@ namespace Interactable.Workbench
             if (currentMap == null)
                 return;
 
-            toggleActiveStackAction = FindActionWithFallbacks(currentMap, toggleActiveStackActionName, toggleActiveStackFallbackActionNames);
-            nextPageAction = FindActionWithFallbacks(currentMap, nextPageActionName, nextPageFallbackActionNames);
-            previousPageAction = FindActionWithFallbacks(currentMap, previousPageActionName, previousPageFallbackActionNames);
-            transferPageAction = FindActionWithFallbacks(currentMap, transferPageActionName, transferPageFallbackActionNames);
+            toggleActiveStackAction = FindAction(currentMap, toggleActiveStackActionName);
+            nextPageAction = FindAction(currentMap, nextPageActionName);
+            previousPageAction = FindAction(currentMap, previousPageActionName);
+            transferPageAction = FindAction(currentMap, transferPageActionName);
         }
 
         private static InputAction FindAction(InputActionMap map, string actionName)
@@ -369,25 +401,6 @@ namespace Interactable.Workbench
                 return null;
 
             return map.FindAction(actionName, false);
-        }
-
-        private static InputAction FindActionWithFallbacks(InputActionMap map, string primaryActionName, string[] fallbackActionNames)
-        {
-            InputAction action = FindAction(map, primaryActionName);
-            if (action != null)
-                return action;
-
-            if (fallbackActionNames == null)
-                return null;
-
-            for (int i = 0; i < fallbackActionNames.Length; i++)
-            {
-                action = FindAction(map, fallbackActionNames[i]);
-                if (action != null)
-                    return action;
-            }
-
-            return null;
         }
 
         private void SubscribeInputActions()
@@ -426,46 +439,34 @@ namespace Interactable.Workbench
 
         private void OnToggleActiveStackPerformed(InputAction.CallbackContext ctx)
         {
-            if (!ctx.performed) return;
-            if (!IsStacksInputActive()) return;
+            if (!ctx.performed || !IsStacksInputActive()) return;
             ToggleActiveStack();
         }
 
         private void OnNextPagePerformed(InputAction.CallbackContext ctx)
         {
-            if (!ctx.performed) return;
-            if (!IsStacksInputActive()) return;
+            if (!ctx.performed || !IsStacksInputActive()) return;
             SelectNextActiveStackPage();
         }
 
         private void OnPreviousPagePerformed(InputAction.CallbackContext ctx)
         {
-            if (!ctx.performed) return;
-            if (!IsStacksInputActive()) return;
+            if (!ctx.performed || !IsStacksInputActive()) return;
             SelectPreviousActiveStackPage();
         }
 
         private void OnTransferPagePerformed(InputAction.CallbackContext ctx)
         {
-            if (!ctx.performed) return;
-            if (!IsStacksInputActive()) return;
+            if (!ctx.performed || !IsStacksInputActive()) return;
             TransferSelectedPageFromActiveStack();
         }
 
         private bool IsStacksInputActive()
         {
-            var controller = FindController();
+            PlayerWorkbenchModeController controller = FindController();
             if (controller == null) return false;
             if (controller.ActiveWorkbench != this) return false;
             return catalogState == CatalogState.DrawerInspect;
-        }
-
-        private void EnsureCatalogDataBuilt()
-        {
-            if (drawerContents.Count > 0)
-                return;
-
-            RebuildDrawerContentsFromDatabases();
         }
 
         private void EnsureRuntimeStacks()
@@ -486,6 +487,8 @@ namespace Interactable.Workbench
                 if (activeDrawerHolder != null)
                     activeDrawerHolder.AttachExternalContainer(activeDrawerStack);
             }
+
+            RefreshStackViews();
         }
 
         private void CleanupRuntimeStacks()
@@ -509,17 +512,17 @@ namespace Interactable.Workbench
             if (handsController == null)
                 return;
 
-            var handItem = handsController.GetItem(Enums.HandType.Right);
+            ItemBase handItem = handsController.GetItem(Enums.HandType.Right);
             if (handItem is not PaperStackItem inputStack)
                 return;
 
             handsController.FreeItem(inputStack);
-            var extracted = inputStack.ExtractAllItems();
+            List<ItemBase> extracted = inputStack.ExtractAllItems();
             Object.Destroy(inputStack.gameObject);
 
             for (int i = 0; i < extracted.Count; i++)
             {
-                var item = extracted[i];
+                ItemBase item = extracted[i];
                 if (item == null)
                     continue;
 
@@ -539,54 +542,56 @@ namespace Interactable.Workbench
                     continue;
                 }
 
-                if (item is CatalogPageItem page)
-                {
-                    selectedPagesStack?.TryAddPage(page);
-                    continue;
-                }
-
                 selectedPagesStack?.TryAddPage(item);
             }
+
+            RefreshStackViews();
         }
 
         private void OpenDrawer(string drawerId)
         {
             EnsureRuntimeStacks();
-            ReturnAllDrawerPagesFromActiveStack();
+            ClearActiveDrawerRuntimePages();
 
-            activeDrawerId = drawerId;
-
-            if (string.IsNullOrWhiteSpace(drawerId))
+            activeDrawer = FindDrawerById(drawerId);
+            if (activeDrawer == null)
                 return;
 
-            if (!drawerContents.TryGetValue(drawerId, out var pages) || pages == null || pages.Count == 0)
-                return;
-
-            for (int i = pages.Count - 1; i >= 0; i--)
+            if (!activeDrawer.TryGetPageDataSnapshot(out CatalogPageData[] pages) || pages.Length == 0)
             {
-                var page = pages[i];
-                if (page == null)
+                RefreshStackViews();
+                return;
+            }
+
+            for (int i = 0; i < pages.Length; i++)
+            {
+                CatalogPageItem pageItem = itemsFactory.CreateCatalogPage(pages[i]);
+                if (pageItem == null)
                     continue;
 
-                activeDrawerStack.TryAddPage(page);
+                activeDrawerStack.TryAddPage(pageItem);
             }
 
-            pages.Clear();
+            RefreshStackViews();
         }
 
-        private void ReturnAllDrawerPagesFromActiveStack()
+        private void ClearActiveDrawerRuntimePages()
         {
             if (activeDrawerStack == null)
+            {
+                activeDrawer = null;
                 return;
+            }
 
-            var extracted = activeDrawerStack.ExtractAllItems();
+            List<ItemBase> extracted = activeDrawerStack.ExtractAllItems();
             for (int i = 0; i < extracted.Count; i++)
             {
-                if (extracted[i] is CatalogPageItem page)
-                {
-                    AddPageBackToSourceDrawer(page);
-                }
+                if (extracted[i] != null)
+                    Object.Destroy(extracted[i].gameObject);
             }
+
+            activeDrawer = null;
+            RefreshStackViews();
         }
 
         private void ReturnAllSelectedPagesToSourceDrawers()
@@ -594,18 +599,23 @@ namespace Interactable.Workbench
             if (selectedPagesStack == null)
                 return;
 
-            var extracted = selectedPagesStack.ExtractAllItems();
+            List<ItemBase> extracted = selectedPagesStack.ExtractAllItems();
             for (int i = 0; i < extracted.Count; i++)
             {
-                if (extracted[i] is CatalogPageItem page)
+                ItemBase item = extracted[i];
+                if (item is CatalogPageItem page)
                 {
-                    AddPageBackToSourceDrawer(page);
+                    CatalogDrawer sourceDrawer = FindDrawerById(page.SourceDrawerId);
+                    sourceDrawer?.AddPage(page.PageId);
+                    Object.Destroy(page.gameObject);
                 }
-                else if (extracted[i] != null)
+                else if (item != null)
                 {
-                    Object.Destroy(extracted[i].gameObject);
+                    Object.Destroy(item.gameObject);
                 }
             }
+
+            RefreshStackViews();
         }
 
         private void ReturnPaperStackToPlayerIfNeeded()
@@ -613,32 +623,67 @@ namespace Interactable.Workbench
             if (handsController == null || itemsFactory == null)
                 return;
 
-            var outputStack = itemsFactory.CreatePaperStack();
+            MainRecipeItem recipe = mainRecipeSlot != null ? mainRecipeSlot.Detach() : null;
 
-            var recipe = mainRecipeSlot != null ? mainRecipeSlot.Detach() : null;
-            if (recipe != null)
-            {
-                outputStack.TryAdd(recipe);
-            }
-
+            List<ItemBase> selectedItems = null;
             if (selectedPagesStack != null)
             {
-                var extracted = selectedPagesStack.ExtractAllItems();
-                for (int i = 0; i < extracted.Count; i++)
-                {
-                    var item = extracted[i];
-                    if (item == null)
-                        continue;
+                selectedItems = selectedPagesStack.ExtractAllItems();
+            }
 
-                    outputStack.TryAdd(item);
+            bool hasRecipe = recipe != null;
+            bool hasSelectedItems = selectedItems != null && selectedItems.Count > 0;
+
+            if (!hasRecipe && !hasSelectedItems)
+                return;
+
+            PaperStackItem outputStack = itemsFactory.CreatePaperStack();
+            bool addedAnything = false;
+
+            if (recipe != null)
+            {
+                recipe.gameObject.SetActive(true);
+
+                if (outputStack.TryAddPage(recipe))
+                {
+                    addedAnything = true;
+                }
+                else
+                {
+                    Debug.LogWarning("CatalogWorkbench: failed to add main recipe to output paper stack.");
+                    Object.Destroy(recipe.gameObject);
                 }
             }
 
-            if (outputStack.Count == 0)
+            if (selectedItems != null)
+            {
+                for (int i = 0; i < selectedItems.Count; i++)
+                {
+                    ItemBase item = selectedItems[i];
+                    if (item == null)
+                        continue;
+
+                    item.gameObject.SetActive(true);
+
+                    if (outputStack.TryAddPage(item))
+                    {
+                        addedAnything = true;
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"CatalogWorkbench: failed to add item '{item.name}' to output paper stack.");
+                        Object.Destroy(item.gameObject);
+                    }
+                }
+            }
+
+            if (!addedAnything || outputStack.Count == 0)
             {
                 Object.Destroy(outputStack.gameObject);
                 return;
             }
+
+            RefreshStackViews();
 
             if (!handsController.GiveItem(outputStack))
             {
@@ -647,128 +692,61 @@ namespace Interactable.Workbench
             }
         }
 
-        private void AddPageBackToSourceDrawer(CatalogPageItem page)
+        private CatalogDrawer FindDrawerById(string drawerId)
         {
-            if (page == null) return;
-            if (string.IsNullOrWhiteSpace(page.SourceDrawerId))
-            {
-                Object.Destroy(page.gameObject);
-                return;
-            }
+            if (string.IsNullOrWhiteSpace(drawerId))
+                return null;
 
-            if (!drawerContents.TryGetValue(page.SourceDrawerId, out var pages))
-            {
-                pages = new List<CatalogPageItem>();
-                drawerContents[page.SourceDrawerId] = pages;
-            }
+            if (drawerMap.TryGetValue(drawerId, out CatalogDrawer drawer))
+                return drawer;
 
-            pages.Add(page);
-        }
-
-        private void RebuildDrawerContentsFromDatabases()
-        {
-            drawerContents.Clear();
-            EnsureReferences();
-
-            var linker = Linker.Instance;
-            if (itemsFactory == null || linker == null)
-                return;
-
-            for (int i = 0; i < drawerConfigs.Length; i++)
-            {
-                var cfg = drawerConfigs[i];
-                if (cfg == null || string.IsNullOrWhiteSpace(cfg.DrawerId))
-                    continue;
-
-                var pages = new List<CatalogPageItem>();
-                drawerContents[cfg.DrawerId] = pages;
-
-                switch (cfg.PageKind)
-                {
-                    case CatalogPageItem.CatalogPageKind.MistResistance:
-                        if (linker.DBMistResistance != null)
-                        {
-                            var data = linker.DBMistResistance.GetAll();
-                            for (int j = 0; j < data.Length; j++)
-                            {
-                                pages.Add(itemsFactory.CreateCatalogPage(cfg.PageKind, data[j].Id, cfg.DrawerId, data[j].ResourceType));
-                            }
-                        }
-                        break;
-
-                    case CatalogPageItem.CatalogPageKind.FaceCover:
-                        if (linker.DBFaceCover != null)
-                        {
-                            var data = linker.DBFaceCover.GetAll();
-                            for (int j = 0; j < data.Length; j++)
-                            {
-                                pages.Add(itemsFactory.CreateCatalogPage(cfg.PageKind, data[j].Id, cfg.DrawerId));
-                            }
-                        }
-                        break;
-
-                    case CatalogPageItem.CatalogPageKind.District:
-                        if (linker.DBDistrict != null)
-                        {
-                            var data = linker.DBDistrict.GetAll();
-                            for (int j = 0; j < data.Length; j++)
-                            {
-                                pages.Add(itemsFactory.CreateCatalogPage(cfg.PageKind, data[j].Id, cfg.DrawerId));
-                            }
-                        }
-                        break;
-
-                    case CatalogPageItem.CatalogPageKind.Faction:
-                        if (linker.DBFaction != null)
-                        {
-                            var data = linker.DBFaction.GetAll();
-                            for (int j = 0; j < data.Length; j++)
-                            {
-                                pages.Add(itemsFactory.CreateCatalogPage(cfg.PageKind, data[j].Id, cfg.DrawerId));
-                            }
-                        }
-                        break;
-                }
-            }
+            return null;
         }
 
         private void SetActiveStack(StackSide side)
         {
             activeStackSide = side;
-            if (side == StackSide.Right)
-            {
-                onRightStackActivated?.Invoke();
-                return;
-            }
-
-            onLeftStackActivated?.Invoke();
+            RefreshStackHighlights();
         }
 
-        private void InvokeDrawerOpened(string drawerId)
+        private void RefreshStackViews()
         {
-            if (string.IsNullOrWhiteSpace(drawerId)) return;
-
-            for (int i = 0; i < drawerEvents.Length; i++)
-            {
-                if (drawerEvents[i] == null || drawerEvents[i].DrawerId != drawerId)
-                    continue;
-
-                drawerEvents[i].OnOpened?.Invoke();
-                return;
-            }
+            selectedPagesHolder?.RefreshCurrentContainerView();
+            activeDrawerHolder?.RefreshCurrentContainerView();
         }
 
-        private void InvokeDrawerClosed(string drawerId)
+        private void RefreshAfterMoveRightToLeft()
         {
-            if (string.IsNullOrWhiteSpace(drawerId)) return;
+            activeDrawerHolder?.RefreshCurrentContainerView();
+            selectedPagesHolder?.RefreshCurrentContainerView();
+        }
 
-            for (int i = 0; i < drawerEvents.Length; i++)
-            {
-                if (drawerEvents[i] == null || drawerEvents[i].DrawerId != drawerId)
-                    continue;
+        private void RefreshAfterMoveLeftToRight()
+        {
+            selectedPagesHolder?.RefreshCurrentContainerView();
+            activeDrawerHolder?.RefreshCurrentContainerView();
+        }
+        
+        private void RefreshStackHighlights()
+        {
+            if (rightStackHighlight != null)
+                rightStackHighlight.SetActive(false);
 
-                drawerEvents[i].OnClosed?.Invoke();
+            if (leftStackHighlight != null)
+                leftStackHighlight.SetActive(false);
+
+            if (catalogState != CatalogState.DrawerInspect)
                 return;
+
+            if (activeStackSide == StackSide.Right)
+            {
+                if (rightStackHighlight != null)
+                    rightStackHighlight.SetActive(true);
+            }
+            else
+            {
+                if (leftStackHighlight != null)
+                    leftStackHighlight.SetActive(true);
             }
         }
     }

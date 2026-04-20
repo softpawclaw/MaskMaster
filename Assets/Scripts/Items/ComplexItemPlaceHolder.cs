@@ -70,61 +70,16 @@ namespace Items
                 return;
             }
 
-            var holderSocket = containerSocket != null ? containerSocket : transform;
+            Transform holderSocket = containerSocket != null ? containerSocket : transform;
 
             currentContainer.transform.SetParent(holderSocket);
             currentContainer.transform.localPosition = Vector3.zero;
             currentContainer.transform.localRotation = Quaternion.identity;
             currentContainer.gameObject.SetActive(true);
 
-            ClearPlacedContentVisuals();
-
-            if (contentSockets == null || contentSockets.Count == 0)
-            {
-                NotifyContentChanged();
-                return;
-            }
-
-            var extractedItems = currentContainer.ExtractAllItems();
-            if (extractedItems == null || extractedItems.Count == 0)
-            {
-                NotifyContentChanged();
-                return;
-            }
-
-            var overflowItems = new List<ItemBase>();
-
-            for (int i = 0; i < extractedItems.Count; i++)
-            {
-                var childItem = extractedItems[i];
-
-                if (childItem == null)
-                    continue;
-
-                if (i >= contentSockets.Count || contentSockets[i] == null)
-                {
-                    overflowItems.Add(childItem);
-                    continue;
-                }
-
-                var socket = contentSockets[i];
-
-                childItem.gameObject.SetActive(true);
-                childItem.transform.SetParent(socket);
-                childItem.transform.localPosition = Vector3.zero;
-                childItem.transform.localRotation = Quaternion.identity;
-
-                placedContent.Add(childItem);
-            }
-
-            if (overflowItems.Count > 0)
-            {
-                currentContainer.LoadItems(overflowItems);
-            }
-
+            RebuildVisualsFromContainer();
             NotifyContentChanged();
         }
-
 
         public void AttachExternalContainer(ContainerItemBase container)
         {
@@ -144,47 +99,36 @@ namespace Items
             if (currentContainer == null)
                 return null;
 
-            var containerToReturn = currentContainer;
-
-            for (int i = 0; i < placedContent.Count; i++)
-            {
-                var child = placedContent[i];
-                if (child == null)
-                    continue;
-
-                containerToReturn.TryAdd(child);
-            }
-
-            placedContent.Clear();
+            ContainerItemBase containerToReturn = currentContainer;
+            ClearPlacedContentVisuals();
             currentItem = null;
             currentContainer = null;
             NotifyContentChanged();
             return containerToReturn;
         }
 
+        public void RefreshCurrentContainerView()
+        {
+            if (currentContainer == null)
+                return;
+
+            RebuildVisualsFromContainer();
+            NotifyContentChanged();
+        }
+
         public void EmergencyClearAndDestroy()
         {
-            // MVP-заглушка: аварийная очистка контейнера и всего его содержимого.
-            // Нужна для принудительного освобождения сокетов после крафта.
             if (currentContainer == null && placedContent.Count == 0 && currentItem == null)
             {
                 NotifyContentChanged();
                 return;
             }
 
-            for (int i = 0; i < placedContent.Count; i++)
-            {
-                if (placedContent[i] == null)
-                    continue;
-
-                Destroy(placedContent[i].gameObject);
-            }
-
-            placedContent.Clear();
+            ClearPlacedContentVisuals();
 
             if (currentContainer != null)
             {
-                var remainingItems = currentContainer.ExtractAllItems();
+                List<ItemBase> remainingItems = currentContainer.ExtractAllItems();
                 if (remainingItems != null)
                 {
                     for (int i = 0; i < remainingItems.Count; i++)
@@ -205,7 +149,6 @@ namespace Items
 
             currentItem = null;
             currentContainer = null;
-
             NotifyContentChanged();
         }
 
@@ -214,29 +157,18 @@ namespace Items
             if (currentContainer == null)
                 return;
 
-            var containerToReturn = currentContainer;
+            ContainerItemBase containerToReturn = currentContainer;
+            ClearPlacedContentVisuals();
+            currentItem = null;
+            currentContainer = null;
 
             if (!hands.GiveItem(containerToReturn))
             {
                 Debug.LogWarning("Failed to return complex item to hands");
+                AttachItem(containerToReturn);
                 return;
             }
 
-            foreach (var childItem in placedContent)
-            {
-                if (childItem == null)
-                    continue;
-
-                var success = hands.GiveItem(childItem);
-                if (!success)
-                {
-                    Debug.LogWarning($"Failed to return child item {childItem.ItemId} into hands/container");
-                }
-            }
-
-            placedContent.Clear();
-            currentItem = null;
-            currentContainer = null;
             NotifyContentChanged();
         }
 
@@ -259,8 +191,8 @@ namespace Items
                     if (prefab == null)
                         continue;
 
-                    var spawnedItem = Instantiate(prefab);
-                    spawnedContent.Add(spawnedItem);
+                    var spawned = Instantiate(prefab);
+                    spawnedContent.Add(spawned);
                 }
 
                 spawnedContainer.LoadItems(spawnedContent);
@@ -269,14 +201,50 @@ namespace Items
             AttachItem(spawnedContainer);
         }
 
+        private void RebuildVisualsFromContainer()
+        {
+            ClearPlacedContentVisuals();
+
+            if (currentContainer == null)
+                return;
+
+            IReadOnlyList<ItemBase> items = currentContainer.Items;
+            if (items == null || items.Count == 0)
+                return;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                ItemBase childItem = items[i];
+                if (childItem == null)
+                    continue;
+
+                if (contentSockets == null || i >= contentSockets.Count || contentSockets[i] == null)
+                {
+                    childItem.gameObject.SetActive(false);
+                    childItem.transform.SetParent(currentContainer.transform);
+                    continue;
+                }
+
+                Transform socket = contentSockets[i];
+                childItem.gameObject.SetActive(true);
+                childItem.transform.SetParent(socket);
+                childItem.transform.localPosition = Vector3.zero;
+                childItem.transform.localRotation = Quaternion.identity;
+                placedContent.Add(childItem);
+            }
+        }
+
         private void ClearPlacedContentVisuals()
         {
             for (int i = 0; i < placedContent.Count; i++)
             {
-                if (placedContent[i] == null)
+                ItemBase child = placedContent[i];
+                if (child == null)
                     continue;
 
-                placedContent[i].transform.SetParent(null);
+                if (currentContainer != null)
+                    child.transform.SetParent(currentContainer.transform);
+                child.gameObject.SetActive(false);
             }
 
             placedContent.Clear();
