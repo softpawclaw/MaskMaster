@@ -14070,17 +14070,17 @@ MonoBehaviour:
   - Id: MR_0
     RecipeName: "\u041D\u0438\u0437\u043A\u0430\u044F"
     ProductionName: 
-    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    Image: {fileID: 21300000, guid: 5a9e83a37ede4a845844e18291b3ece7, type: 3}
     ResourceType: 1
   - Id: MR_1
     RecipeName: "\u0421\u0440\u0435\u0434\u043D\u044F\u044F"
     ProductionName: 
-    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    Image: {fileID: 21300000, guid: c135c94ee15353242a9eaeaa1894ce11, type: 3}
     ResourceType: 2
   - Id: MR_2
     RecipeName: "\u0412\u044B\u0441\u043E\u043A\u0430\u044F"
     ProductionName: 
-    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    Image: {fileID: 21300000, guid: ac7d006270f46d047aed17f7681ce043, type: 3}
     ResourceType: 3
 --- !u!114 &994718837
 MonoBehaviour:
@@ -14098,17 +14098,17 @@ MonoBehaviour:
   - Id: FC_0
     RecipeName: "\u041C\u0430\u043B\u0435\u043D\u044C\u043A\u0430\u044F"
     ProductionName: 
-    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    Image: {fileID: 21300000, guid: 59c9c10d97cbffe49ac0ac9f04fc7067, type: 3}
     MaskSize: 1
   - Id: FC_1
     RecipeName: "\u0421\u0440\u0435\u0434\u043D\u044F\u044F"
     ProductionName: 
-    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    Image: {fileID: 21300000, guid: f074bce958867bc49b04229705c075a2, type: 3}
     MaskSize: 2
   - Id: FC_2
     RecipeName: "\u041F\u043E\u043B\u043D\u0430\u044F"
     ProductionName: 
-    Image: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+    Image: {fileID: 21300000, guid: 646a13628ec0236459098255f05fc864, type: 3}
     MaskSize: 3
 --- !u!114 &994718838
 MonoBehaviour:

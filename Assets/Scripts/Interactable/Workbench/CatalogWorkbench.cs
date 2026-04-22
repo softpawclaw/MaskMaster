@@ -264,7 +264,7 @@ namespace Interactable.Workbench
             if (page == null)
                 return;
 
-            if (!selectedPagesStack.TryAddPage(page))
+            if (!selectedPagesStack.TryAddPageOnTop(page))
             {
                 activeDrawerStack.TryAddPage(page);
                 RefreshAfterMoveRightToLeft();
@@ -289,13 +289,13 @@ namespace Interactable.Workbench
 
             if (returningToActiveDrawer && activeDrawerStack != null)
             {
-                if (activeDrawerStack.TryAddPage(page))
+                if (activeDrawerStack.TryAddPageOnTop(page))
                 {
                     activeDrawer.AddPage(page.PageId);
                 }
                 else
                 {
-                    selectedPagesStack.TryAddPage(page);
+                    selectedPagesStack.TryAddPageOnTop(page);
                 }
 
                 RefreshAfterMoveLeftToRight();

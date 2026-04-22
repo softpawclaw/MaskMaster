@@ -74,6 +74,19 @@ namespace Items
 
             OnContainerChanged();
         }
+        
+        public virtual int GetDisplayCount(int maxSlots)
+        {
+            return Mathf.Min(items.Count, maxSlots);
+        }
+
+        public virtual ItemBase GetDisplayItemAt(int displayIndex)
+        {
+            if (displayIndex < 0 || displayIndex >= items.Count)
+                return null;
+
+            return items[displayIndex];
+        }
 
         protected virtual void OnContainerChanged()
         {

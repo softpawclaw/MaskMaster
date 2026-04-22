@@ -208,29 +208,46 @@ namespace Items
             if (currentContainer == null)
                 return;
 
-            IReadOnlyList<ItemBase> items = currentContainer.Items;
-            if (items == null || items.Count == 0)
+            if (contentSockets == null || contentSockets.Count == 0)
                 return;
 
-            for (int i = 0; i < items.Count; i++)
+            int visibleCount = currentContainer.GetDisplayCount(contentSockets.Count);
+            if (visibleCount <= 0)
+                return;
+
+            for (int i = 0; i < visibleCount; i++)
             {
-                ItemBase childItem = items[i];
+                ItemBase childItem = currentContainer.GetDisplayItemAt(i);
                 if (childItem == null)
                     continue;
 
-                if (contentSockets == null || i >= contentSockets.Count || contentSockets[i] == null)
+                Transform socket = contentSockets[i];
+                if (socket == null)
                 {
                     childItem.gameObject.SetActive(false);
                     childItem.transform.SetParent(currentContainer.transform);
                     continue;
                 }
 
-                Transform socket = contentSockets[i];
                 childItem.gameObject.SetActive(true);
                 childItem.transform.SetParent(socket);
                 childItem.transform.localPosition = Vector3.zero;
                 childItem.transform.localRotation = Quaternion.identity;
                 placedContent.Add(childItem);
+            }
+
+            IReadOnlyList<ItemBase> rawItems = currentContainer.Items;
+            for (int i = 0; i < rawItems.Count; i++)
+            {
+                ItemBase item = rawItems[i];
+                if (item == null)
+                    continue;
+
+                if (placedContent.Contains(item))
+                    continue;
+
+                item.gameObject.SetActive(false);
+                item.transform.SetParent(currentContainer.transform);
             }
         }
 

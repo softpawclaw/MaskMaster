@@ -1,6 +1,10 @@
+using System;
 using DB;
 using Enums;
+using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Items
 {
@@ -11,13 +15,16 @@ namespace Items
         [SerializeField] private string pageId;
         [SerializeField] private string sourceDrawerId;
 
-        [Header("Resolved Display Data")]
-        [SerializeField] private string recipeName;
-        [SerializeField] private string productionName;
-        [SerializeField] private Sprite image;
-        [SerializeField] private ResourceType mistResourceType = ResourceType.None;
-        [SerializeField] private MaskSize faceCoverMaskSize;
-
+        [Header("Sockets")] [SerializeField] private TextMeshPro titleText = null;
+        [Header("Sockets | MR")] [SerializeField] private SpriteRenderer mrIcon = null;
+        [Header("Sockets | FC")] [SerializeField] private SpriteRenderer fcIcon = null;
+        
+        private string recipeName;
+        private string productionName;
+        private Sprite image;
+        private ResourceType mistResourceType = ResourceType.None;
+        private MaskSize faceCoverMaskSize;
+        
         public Enums.CatalogPageKind PageKind => pageKind;
         public string PageId => pageId;
         public string SourceDrawerId => sourceDrawerId;
@@ -47,6 +54,8 @@ namespace Items
             productionName = resolvedData.ProductionName;
             image = resolvedData.Image;
             mistResourceType = resolvedData.ResourceType;
+            InitTitle();
+            mrIcon.sprite = image;
         }
 
         public void Init(CatalogPageData data, DBFaceCover.FaceCoverData resolvedData)
@@ -56,18 +65,34 @@ namespace Items
             productionName = resolvedData.ProductionName;
             image = resolvedData.Image;
             faceCoverMaskSize = resolvedData.MaskSize;
+            InitTitle();
+            fcIcon.sprite = image;
         }
 
         public void Init(CatalogPageData data, DBDistrict.DistrictData resolvedData)
         {
             Init(data);
             recipeName = resolvedData.RecipeName;
+            InitTitle();
         }
 
         public void Init(CatalogPageData data, DBFaction.FactionData resolvedData)
         {
             Init(data);
             recipeName = resolvedData.RecipeName;
+            InitTitle();
+        }
+
+        private void InitTitle()
+        {
+            titleText.enabled = true;
+            titleText.text = recipeName;
+        }
+
+        private void ClearAllSockets()
+        {
+            titleText.text = "";
+            titleText.enabled = false;
         }
     }
 }

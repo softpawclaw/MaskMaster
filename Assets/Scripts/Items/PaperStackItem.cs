@@ -117,6 +117,42 @@ namespace Items
             RefreshHandView();
         }
 
+        public override ItemBase GetDisplayItemAt(int displayIndex)
+        {
+            if (items.Count == 0)
+                return null;
+
+            if (displayIndex < 0)
+                return null;
+
+            int itemIndex = (selectedIndex + displayIndex) % items.Count;
+            return items[itemIndex];
+        }
+
+        public override int GetDisplayCount(int maxSlots)
+        {
+            if (maxSlots <= 0)
+                return 0;
+
+            return Mathf.Min(items.Count, maxSlots);
+        }
+        
+        public bool TryAddPageOnTop(ItemBase item)
+        {
+            if (item == null) return false;
+            if (!CanAccept(item)) return false;
+            if (items.Contains(item)) return false;
+
+            items.Insert(0, item);
+            item.transform.SetParent(transform);
+            item.transform.localPosition = Vector3.zero;
+            item.transform.localRotation = Quaternion.identity;
+
+            selectedIndex = 0;
+            OnContainerChanged();
+            return true;
+        }
+        
         protected override void OnContainerChanged()
         {
             if (items.Count == 0)
