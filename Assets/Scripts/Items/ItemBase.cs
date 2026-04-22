@@ -5,6 +5,9 @@ namespace Items
 {
     public class ItemBase : MonoBehaviour
     {
+        private const string HandsLayerName = "Hands";
+        private const string WorldLayerName = "Default";
+
         [Header("Base")]
         [SerializeField] private string itemId;
         [SerializeField] private PlacementType placementType;
@@ -32,6 +35,7 @@ namespace Items
             transform.SetParent(handSocket);
             transform.localPosition = Vector3.zero;
             transform.localRotation = Quaternion.identity;
+            SetHandsRenderLayer();
         }
 
         /// <summary>
@@ -39,6 +43,40 @@ namespace Items
         /// </summary>
         public virtual void OnRemovedFromHand()
         {
+            SetWorldRenderLayer();
+        }
+
+        public void SetHandsRenderLayer()
+        {
+            SetRenderLayerRecursive(LayerMask.NameToLayer(HandsLayerName));
+        }
+
+        public void SetWorldRenderLayer()
+        {
+            SetRenderLayerRecursive(LayerMask.NameToLayer(WorldLayerName));
+        }
+
+        public void SetRenderLayerRecursive(int targetLayer)
+        {
+            if (targetLayer < 0)
+            {
+                targetLayer = 0;
+            }
+
+            SetLayerRecursive(transform, targetLayer);
+        }
+
+        private static void SetLayerRecursive(Transform root, int targetLayer)
+        {
+            if (root == null)
+                return;
+
+            root.gameObject.layer = targetLayer;
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                SetLayerRecursive(root.GetChild(i), targetLayer);
+            }
         }
     }
 }

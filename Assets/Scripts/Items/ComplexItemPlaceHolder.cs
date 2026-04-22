@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Player;
 using UnityEngine;
@@ -76,6 +76,7 @@ namespace Items
             currentContainer.transform.localPosition = Vector3.zero;
             currentContainer.transform.localRotation = Quaternion.identity;
             currentContainer.gameObject.SetActive(true);
+            currentContainer.SetWorldRenderLayer();
 
             RebuildVisualsFromContainer();
             NotifyContentChanged();

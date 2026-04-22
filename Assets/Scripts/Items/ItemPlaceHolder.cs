@@ -1,4 +1,4 @@
-﻿using Enums;
+using Enums;
 using Player;
 using UnityEngine;
 
@@ -104,6 +104,7 @@ namespace Items
             var socket = containerSocket != null ? containerSocket : transform;
             item.transform.SetParent(socket);
             item.transform.SetPositionAndRotation(socket.position, socket.rotation);
+            item.SetWorldRenderLayer();
         }
     }
 }

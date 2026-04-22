@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Items
@@ -16,6 +17,8 @@ namespace Items
 
         private readonly ResourceItem[] slotItems = new ResourceItem[SlotCount];
 
+        private bool takenToHand = false;
+        
         public int SelectedIndex => selectedIndex;
 
         public override bool CanAccept(ItemBase item)
@@ -30,29 +33,21 @@ namespace Items
         public override void OnTakenToHand(Transform handSocket)
         {
             base.OnTakenToHand(handSocket);
+            selectedIndex = 0;
             RefreshHandView();
+        }
+
+        public override void OnRemovedFromHand()
+        {
+            base.OnRemovedFromHand();
+            selectedIndex = -1;
+            RefreshSelectionView();
         }
 
         public override ItemBase GetSelectedItem()
         {
             if (!IsValidIndex(selectedIndex)) return null;
             return slotItems[selectedIndex];
-        }
-
-        public ResourceItem GetSelectedResource()
-        {
-            return GetSelectedItem() as ResourceItem;
-        }
-
-        public ResourceItem GetResourceAt(int index)
-        {
-            if (!IsValidIndex(index)) return null;
-            return slotItems[index];
-        }
-
-        public bool HasSelectedResource()
-        {
-            return GetSelectedResource() != null;
         }
 
         public override void SelectNext()
@@ -104,39 +99,6 @@ namespace Items
 
             return false;
         }
-        
-        public List<ResourceItem> GetItemsSnapshot()
-        {
-            var result = new List<ResourceItem>();
-
-            for (int i = 0; i < SlotCount; i++)
-            {
-                if (slotItems[i] == null) continue;
-                result.Add(slotItems[i]);
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Старая логика: положить newItem в выбранный слот независимо от того,
-        /// был он пустой или нет. Если что-то лежало — вернуть через out.
-        /// Оставлено для обратной совместимости.
-        /// </summary>
-        public bool TryReplaceSelected(ResourceItem newItem, out ResourceItem replacedItem)
-        {
-            replacedItem = null;
-
-            if (newItem == null) return false;
-            if (!IsValidIndex(selectedIndex)) return false;
-
-            replacedItem = slotItems[selectedIndex];
-            slotItems[selectedIndex] = newItem;
-
-            SyncItemsListFromSlots();
-            RefreshHandView();
-            return true;
-        }
 
         /// <summary>
         /// Новая универсальная логика:
@@ -170,60 +132,8 @@ namespace Items
 
             SyncItemsListFromSlots();
             RefreshHandView();
+            slotItems[selectedIndex].OnTakenToHand(slotItems[selectedIndex].transform);
             return true;
-        }
-
-        /// <summary>
-        /// Новая логика под кейс "снять ресурс с подноса и куда-то передать".
-        /// Работает только если в выбранном слоте есть ресурс.
-        /// </summary>
-        public bool TryTakeSelectedResource(out ResourceItem resource)
-        {
-            resource = null;
-
-            if (!IsValidIndex(selectedIndex)) return false;
-
-            var selected = slotItems[selectedIndex];
-            if (selected == null) return false;
-
-            slotItems[selectedIndex] = null;
-            resource = selected;
-
-            SyncItemsListFromSlots();
-            RefreshHandView();
-            return true;
-        }
-
-        /// <summary>
-        /// Строгий обмен: работает только если выбранный слот НЕ пустой.
-        /// Оставлено как отдельный метод под старый сценарий, где пустой слот
-        /// не должен участвовать во взаимодействии.
-        /// </summary>
-        public bool TrySwapSelectedResource(ResourceItem incomingResource, out ResourceItem outgoingResource)
-        {
-            outgoingResource = null;
-
-            if (incomingResource == null) return false;
-            if (!IsValidIndex(selectedIndex)) return false;
-
-            var selected = slotItems[selectedIndex];
-            if (selected == null) return false;
-
-            outgoingResource = selected;
-            slotItems[selectedIndex] = incomingResource;
-
-            SyncItemsListFromSlots();
-            RefreshHandView();
-            return true;
-        }
-
-        /// <summary>
-        /// Старая логика извлечения выбранного ресурса.
-        /// Оставлено как алиас для совместимости.
-        /// </summary>
-        public ResourceItem ExtractSelectedResource()
-        {
-            return TryTakeSelectedResource(out var resource) ? resource : null;
         }
 
         public override List<ItemBase> ExtractAllItems()
@@ -260,6 +170,11 @@ namespace Items
 
             SyncItemsListFromSlots();
             RefreshHandView();
+        }
+
+        private void Start()
+        {
+            OnRemovedFromHand();
         }
 
         protected override void OnContainerChanged()

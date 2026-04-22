@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Items;
 using Player;
 using UnityEngine;
@@ -26,6 +26,7 @@ namespace Interactable.Table
             currentItem.transform.SetParent(socket);
             currentItem.transform.SetPositionAndRotation(socket.position, socket.rotation);
             currentItem.gameObject.SetActive(true);
+            currentItem.SetWorldRenderLayer();
 
             OnItemChanged?.Invoke();
         }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Items
@@ -31,6 +31,7 @@ namespace Items
             item.transform.SetParent(transform);
             item.transform.localPosition = Vector3.zero;
             item.transform.localRotation = Quaternion.identity;
+            item.SetRenderLayerRecursive(gameObject.layer);
 
             OnContainerChanged();
             return true;
@@ -70,6 +71,7 @@ namespace Items
                 if (item == null) continue;
                 items.Add(item);
                 item.transform.SetParent(transform);
+                item.SetRenderLayerRecursive(gameObject.layer);
             }
 
             OnContainerChanged();
@@ -86,6 +88,32 @@ namespace Items
                 return null;
 
             return items[displayIndex];
+        }
+
+        public override void OnTakenToHand(Transform handSocket)
+        {
+            base.OnTakenToHand(handSocket);
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] == null)
+                    continue;
+
+                items[i].SetRenderLayerRecursive(gameObject.layer);
+            }
+        }
+
+        public override void OnRemovedFromHand()
+        {
+            base.OnRemovedFromHand();
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] == null)
+                    continue;
+
+                items[i].SetRenderLayerRecursive(gameObject.layer);
+            }
         }
 
         protected virtual void OnContainerChanged()

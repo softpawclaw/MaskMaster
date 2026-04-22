@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Enums;
 using Global;
@@ -131,6 +131,7 @@ namespace Interactable
             mask.transform.SetParent(socket);
             mask.transform.SetPositionAndRotation(socket.position, socket.rotation);
             mask.gameObject.SetActive(true);
+            mask.SetWorldRenderLayer();
 
             storedMasks.Add(mask);
 

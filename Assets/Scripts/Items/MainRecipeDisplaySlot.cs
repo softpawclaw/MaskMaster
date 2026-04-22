@@ -22,6 +22,7 @@ namespace Items
             recipe.transform.SetParent(socket);
             recipe.transform.position = socket.position;
             recipe.transform.rotation = socket.rotation;
+            recipe.SetWorldRenderLayer();
             recipe.RefreshVisuals();
             return true;
         }
