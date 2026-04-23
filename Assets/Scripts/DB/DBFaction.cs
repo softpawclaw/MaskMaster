@@ -1,4 +1,5 @@
 using System;
+using Enums;
 using UnityEngine;
 
 namespace DB
@@ -10,6 +11,16 @@ namespace DB
         {
             public string Id;
             public string RecipeName;
+            public SocketData[] TopSockets;
+            public SocketData[] MidSockets;
+            public SocketData[] BotSockets;
+        }
+        
+        [Serializable]
+        public struct SocketData
+        {
+            public ResourceType ResourceType;
+            public Sprite ResourceSprite;
         }
 
         [SerializeField] private FactionData[] config;

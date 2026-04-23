@@ -14035,8 +14035,26 @@ MonoBehaviour:
   config:
   - Id: F_0
     RecipeName: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F0"
+    TopSockets:
+    - ResourceType: 10
+      ResourceSprite: {fileID: 21300000, guid: 58aa9850744a6334eb593dda04e9a8bb, type: 3}
+    MidSockets:
+    - ResourceType: 11
+      ResourceSprite: {fileID: 21300000, guid: 02d7973e4ae537a4ca9cdb0d2ee0b535, type: 3}
+    BotSockets:
+    - ResourceType: 12
+      ResourceSprite: {fileID: 21300000, guid: 0ba052beffc0ce447bf83ac547c973a3, type: 3}
   - Id: F_1
     RecipeName: "\u0424\u0440\u0430\u043A\u0446\u0438\u044F1"
+    TopSockets:
+    - ResourceType: 13
+      ResourceSprite: {fileID: 21300000, guid: 9998026e6fa59a94db8353469e61ec30, type: 3}
+    MidSockets:
+    - ResourceType: 10
+      ResourceSprite: {fileID: 21300000, guid: 58aa9850744a6334eb593dda04e9a8bb, type: 3}
+    BotSockets:
+    - ResourceType: 13
+      ResourceSprite: {fileID: 21300000, guid: 9998026e6fa59a94db8353469e61ec30, type: 3}
 --- !u!114 &994718835
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14052,8 +14070,14 @@ MonoBehaviour:
   config:
   - Id: D_0
     RecipeName: "\u0420\u0430\u0439\u043E\u043D0"
+    TopShapeImage: {fileID: 21300000, guid: 2e815ddcb29dd7f428974d0f57a2742a, type: 3}
+    MidShapeImage: {fileID: 21300000, guid: ef1f889ccf327dc428c0d84a2948c6d8, type: 3}
+    BotShapeImage: {fileID: 21300000, guid: dcac49630088cb34a8a3f59ff9192d37, type: 3}
   - Id: D_1
     RecipeName: "\u0420\u0430\u0439\u043E\u043D1"
+    TopShapeImage: {fileID: 21300000, guid: 91938e6eb6c5b6d44a7a7d30dc705a9f, type: 3}
+    MidShapeImage: {fileID: 21300000, guid: cd18d0b609931b74aab6c984529c666d, type: 3}
+    BotShapeImage: {fileID: 21300000, guid: 529d1f22e71caa34dbdeaa1cb7390601, type: 3}
 --- !u!114 &994718836
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -10,6 +10,9 @@ namespace DB
         {
             public string Id;
             public string RecipeName;
+            public Sprite TopShapeImage;
+            public Sprite MidShapeImage;
+            public Sprite BotShapeImage;
         }
 
         [SerializeField] private DistrictData[] config;
