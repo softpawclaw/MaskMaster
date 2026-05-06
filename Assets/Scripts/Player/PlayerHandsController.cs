@@ -43,8 +43,19 @@ namespace Player
 
         [Header("Input")]
         [SerializeField] private PlayerInput playerInput;
-        [SerializeField] private string flipPageActionName = "FlipPage";           // E
-        [SerializeField] private string selectPlaceActionName = "SelectPlace";     // Q
+
+        [Tooltip("Mouse wheel action. Expected value type: Vector2 or Axis/float.")]
+        [SerializeField] private string scrollActiveHandActionName = "Scroll";
+
+        [Tooltip("Off by default so existing prefab values for Q/E do not keep stealing gameplay input.")]
+        [SerializeField] private bool enableLegacyHandScrollActions = false;
+
+        [Tooltip("Legacy fallback. Used only when Enable Legacy Hand Scroll Actions is true.")]
+        [SerializeField] private string flipPageActionName = string.Empty;
+
+        [Tooltip("Legacy fallback. Used only when Enable Legacy Hand Scroll Actions is true.")]
+        [SerializeField] private string selectPlaceActionName = string.Empty;
+
         [SerializeField] private string inspectLeftHandActionName = "InspectLeftHand";
         [SerializeField] private string inspectRightHandActionName = "InspectRightHand";
 
@@ -58,6 +69,7 @@ namespace Player
         public ItemBase RightItem => rightItem;
         public ItemBase LeftItem => leftItem;
 
+        private InputAction scrollActiveHandAction;
         private InputAction flipPageAction;
         private InputAction selectPlaceAction;
         private InputAction inspectLeftHandAction;
@@ -76,28 +88,40 @@ namespace Player
             if (playerInput == null || playerInput.actions == null)
                 return;
 
-            flipPageAction = playerInput.actions[flipPageActionName];
-            if (flipPageAction != null)
+            scrollActiveHandAction = FindAction(scrollActiveHandActionName);
+            if (scrollActiveHandAction != null)
             {
-                flipPageAction.performed += OnFlipPagePerformed;
-                flipPageAction.Enable();
+                scrollActiveHandAction.performed += OnScrollActiveHandPerformed;
+                scrollActiveHandAction.Enable();
             }
 
-            selectPlaceAction = playerInput.actions[selectPlaceActionName];
-            if (selectPlaceAction != null)
+            // Старые бинды оставлены как опциональный fallback, но выключены по умолчанию.
+            // Это важно: на уже существующих префабах Unity сохранит старые строки FlipPage/SelectPlace.
+            if (enableLegacyHandScrollActions)
             {
-                selectPlaceAction.performed += OnSelectPlacePerformed;
-                selectPlaceAction.Enable();
+                flipPageAction = FindAction(flipPageActionName);
+                if (flipPageAction != null)
+                {
+                    flipPageAction.performed += OnFlipPagePerformed;
+                    flipPageAction.Enable();
+                }
+
+                selectPlaceAction = FindAction(selectPlaceActionName);
+                if (selectPlaceAction != null)
+                {
+                    selectPlaceAction.performed += OnSelectPlacePerformed;
+                    selectPlaceAction.Enable();
+                }
             }
 
-            inspectLeftHandAction = playerInput.actions[inspectLeftHandActionName];
+            inspectLeftHandAction = FindAction(inspectLeftHandActionName);
             if (inspectLeftHandAction != null)
             {
                 inspectLeftHandAction.performed += OnInspectLeftHandPerformed;
                 inspectLeftHandAction.Enable();
             }
 
-            inspectRightHandAction = playerInput.actions[inspectRightHandActionName];
+            inspectRightHandAction = FindAction(inspectRightHandActionName);
             if (inspectRightHandAction != null)
             {
                 inspectRightHandAction.performed += OnInspectRightHandPerformed;
@@ -107,6 +131,9 @@ namespace Player
 
         private void OnDisable()
         {
+            if (scrollActiveHandAction != null)
+                scrollActiveHandAction.performed -= OnScrollActiveHandPerformed;
+
             if (flipPageAction != null)
                 flipPageAction.performed -= OnFlipPagePerformed;
 
@@ -126,16 +153,24 @@ namespace Player
             UpdateHandPose(leftHandData, leftHandState);
         }
 
+        private void OnScrollActiveHandPerformed(InputAction.CallbackContext context)
+        {
+            float scrollValue = ReadScrollValue(context);
+
+            if (Mathf.Approximately(scrollValue, 0f))
+                return;
+
+            TryScrollActiveHand(scrollValue > 0f);
+        }
+
         private void OnFlipPagePerformed(InputAction.CallbackContext context)
         {
-            if (TryFlipPaperStackInHand(HandType.Right)) return;
-            TryFlipPaperStackInHand(HandType.Left);
+            TryScrollActiveHand(true);
         }
 
         private void OnSelectPlacePerformed(InputAction.CallbackContext context)
         {
-            if (TrySelectTraySlotInHand(HandType.Right)) return;
-            TrySelectTraySlotInHand(HandType.Left);
+            TryScrollActiveHand(true);
         }
 
         private void OnInspectLeftHandPerformed(InputAction.CallbackContext context)
@@ -231,22 +266,63 @@ namespace Player
             }
         }
 
-        private bool TryFlipPaperStackInHand(HandType handType)
+        private bool TryScrollActiveHand(bool forward)
+        {
+            if (!TryGetActiveHand(out HandType activeHand))
+                return false;
+
+            return TryScrollContainerInHand(activeHand, forward);
+        }
+
+        private bool TryScrollContainerInHand(HandType handType, bool forward)
         {
             var item = GetItem(handType);
-            if (item is not PaperStackItem stack) return false;
+            if (item is not ContainerItemBase container) return false;
 
-            stack.SelectNext();
+            if (forward)
+                container.SelectNext();
+            else
+                container.SelectPrevious();
+
             return true;
         }
 
-        private bool TrySelectTraySlotInHand(HandType handType)
+        private bool TryGetActiveHand(out HandType handType)
         {
-            var item = GetItem(handType);
-            if (item is not TrayItem tray) return false;
+            if (rightHandState == HandViewState.Inspect)
+            {
+                handType = HandType.Right;
+                return true;
+            }
 
-            tray.SelectNext();
-            return true;
+            if (leftHandState == HandViewState.Inspect)
+            {
+                handType = HandType.Left;
+                return true;
+            }
+
+            handType = default;
+            return false;
+        }
+
+        private float ReadScrollValue(InputAction.CallbackContext context)
+        {
+            try
+            {
+                return context.ReadValue<Vector2>().y;
+            }
+            catch (InvalidOperationException)
+            {
+                return context.ReadValue<float>();
+            }
+        }
+
+        private InputAction FindAction(string actionName)
+        {
+            if (string.IsNullOrWhiteSpace(actionName))
+                return null;
+
+            return playerInput.actions.FindAction(actionName, false);
         }
 
         public TrayItem GetTrayInHands()
@@ -255,6 +331,24 @@ namespace Player
             if (leftItem is TrayItem leftTray) return leftTray;
 
             return null;
+        }
+
+
+        public T GetFirstItemInHands<T>() where T : ItemBase
+        {
+            if (rightItem is T rightTyped) return rightTyped;
+            if (leftItem is T leftTyped) return leftTyped;
+
+            return null;
+        }
+
+        public bool TryTakeFirstItemFromHands<T>(out T item) where T : ItemBase
+        {
+            item = GetFirstItemInHands<T>();
+            if (item == null) return false;
+
+            FreeItem(item);
+            return true;
         }
 
         public ItemBase GetItem(HandType handType)

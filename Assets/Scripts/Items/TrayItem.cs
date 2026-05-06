@@ -132,7 +132,12 @@ namespace Items
 
             SyncItemsListFromSlots();
             RefreshHandView();
-            slotItems[selectedIndex].OnTakenToHand(slotItems[selectedIndex].transform);
+
+            if (slotItems[selectedIndex] != null)
+            {
+                slotItems[selectedIndex].OnTakenToHand(slotItems[selectedIndex].transform);
+            }
+
             return true;
         }
 

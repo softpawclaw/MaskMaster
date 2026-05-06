@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Enums;
 using UnityEngine;
 
@@ -45,6 +46,27 @@ namespace Items
             if (!TryRemove(selected)) return null;
             selected.gameObject.SetActive(true);
             return selected;
+        }
+
+
+        public ItemBase TryRemoveFirst(Predicate<ItemBase> predicate)
+        {
+            if (predicate == null) return null;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                ItemBase candidate = items[i];
+                if (candidate == null) continue;
+                if (!predicate(candidate)) continue;
+
+                if (!TryRemove(candidate))
+                    return null;
+
+                candidate.gameObject.SetActive(true);
+                return candidate;
+            }
+
+            return null;
         }
 
         public void MergeFrom(PaperStackItem other)
