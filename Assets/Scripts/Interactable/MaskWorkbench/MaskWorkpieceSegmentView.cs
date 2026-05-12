@@ -107,7 +107,7 @@ namespace Interactable.MaskWorkbench
                 markedForCutVisual.SetActive(marked);
         }
 
-        public void RefreshShape(int selectedShapeIndex, bool showShape, bool showSockets, MaskWorkpiece owner, bool solidShape = false)
+        public void RefreshShape(int selectedShapeIndex, bool showShape, bool showSockets, IMaskSocketSelectionOwner owner, bool solidShape = false, bool allowSocketSelection = true)
         {
             EnsureRootActive();
 
@@ -141,8 +141,8 @@ namespace Interactable.MaskWorkbench
                     socket.SetVisible(active && showSockets);
                     if (active)
                     {
-                        bool selected = owner != null && owner.IsSocketCurrentlySelected(Segment, socket.Socket);
-                        bool planned = owner != null && owner.HasPlannedInlay(Segment, socket.Socket);
+                        bool selected = allowSocketSelection && owner != null && owner.IsSocketCurrentlySelected(socket);
+                        bool planned = socket.HasPlannedInlay || (owner != null && owner.HasPlannedInlay(socket));
                         socket.Refresh(selected, planned);
                     }
                 }

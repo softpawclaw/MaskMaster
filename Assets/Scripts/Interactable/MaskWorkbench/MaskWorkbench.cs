@@ -25,10 +25,17 @@ namespace Interactable.MaskWorkbench
         [SerializeField] private ComplexItemPlaceHolder recipePagesHolder;
         [SerializeField] private ComplexItemPlaceHolder trayHolder;
 
-        [Header("Production Workpiece")]
-        [SerializeField] private MaskWorkpiece workpiecePrefab;
-        [SerializeField] private Transform workpieceSocket;
-        [SerializeField] private Transform completedMaskSocket;
+        [Header("Production Sockets")]
+        [SerializeField] private MaskBlankWorkpiece blankWorkpiecePrefab;
+        [SerializeField] private Transform blankSocket;
+        [SerializeField] private Transform maskSocket;
+        [SerializeField] private MaskWorkpieceSelectorView partSelector;
+
+        [Header("Inlay Selection")]
+        [SerializeField] private DBInlayVisual dbInlayVisual;
+        [SerializeField] private MaskInlaySelectionCursor inlayCursorPrefab;
+        [SerializeField] private GameObject clearSocketPreviewPrefab;
+
         [SerializeField] private Vector3 workpieceLocalPosition = Vector3.zero;
         [SerializeField] private Vector3 workpieceLocalEuler = Vector3.zero;
         [SerializeField] private Vector3 workpieceLocalScale = Vector3.one;
@@ -58,14 +65,13 @@ namespace Interactable.MaskWorkbench
         private PaperStackItem runtimeRecipePagesStack;
         private TrayItem runtimeTray;
         private ResourceItem runtimeBlankResource;
-        private MaskWorkpiece runtimeWorkpiece;
-        private MaskItem runtimeCompletedMask;
+        private MaskBlankWorkpiece runtimeBlankWorkpiece;
+        private MaskItem runtimeCraftMask;
+        private MaskInlaySelectionCursor runtimeInlayCursor;
 
-        private readonly Queue<KeyValuePair<ResourceType, List<MaskWorkpiece.PlannedInlay>>> pendingInlayMiniGames = new();
-        private KeyValuePair<ResourceType, List<MaskWorkpiece.PlannedInlay>> activeInlayMiniGameGroup;
+        private readonly Queue<KeyValuePair<ResourceType, List<MaskItem.PlannedInlay>>> pendingInlayMiniGames = new();
+        private KeyValuePair<ResourceType, List<MaskItem.PlannedInlay>> activeInlayMiniGameGroup;
         private MaskWorkbenchState stateBeforeMiniGame = MaskWorkbenchState.CraftSurfaceInspect;
-        private int selectedTrayInlayIndex;
-
         private InputAction advanceProductionAction;
         private InputAction navigateProductionAction;
         private InputAction selectProductionAction;
@@ -102,7 +108,8 @@ namespace Interactable.MaskWorkbench
             else
             {
                 runtimeTray = trayHolder != null ? trayHolder.CurrentItem as TrayItem : runtimeTray;
-                runtimeWorkpiece = session.Workpiece != null ? session.Workpiece : runtimeWorkpiece;
+                runtimeBlankWorkpiece = session.BlankWorkpiece != null ? session.BlankWorkpiece : runtimeBlankWorkpiece;
+                runtimeCraftMask = session.CraftMask != null ? session.CraftMask : runtimeCraftMask;
             }
 
             SetState(MaskWorkbenchState.Overview);
@@ -280,8 +287,9 @@ namespace Interactable.MaskWorkbench
             }
 
             runtimeBlankResource = blank;
-            runtimeWorkpiece = CreateWorkpieceFromBlank(blank);
-            session.MarkStarted(blank, runtimeWorkpiece);
+            runtimeBlankWorkpiece = CreateBlankWorkpieceFromBlank(blank);
+            runtimeCraftMask = CreateCraftMask();
+            session.MarkStarted(blank, runtimeBlankWorkpiece, runtimeCraftMask);
             DestroyConsumedBlankResource();
 
             RemoveFirstRecipePageOfKind(CatalogPageKind.MistResistance);
@@ -293,10 +301,11 @@ namespace Interactable.MaskWorkbench
         {
             RemoveFirstRecipePageOfKind(CatalogPageKind.FaceCover);
             RunMiniGameOrComplete(
-                new MaskMiniGameRequest(MaskMiniGameKind.CutSegment, runtimeWorkpiece != null ? runtimeWorkpiece.SelectedSegment : MaskSegment.Middle),
+                new MaskMiniGameRequest(MaskMiniGameKind.CutSegment, runtimeBlankWorkpiece != null ? runtimeBlankWorkpiece.SelectedSegment : MaskSegment.Middle),
                 () =>
                 {
-                    runtimeWorkpiece?.ApplyMarkedCuts();
+                    runtimeBlankWorkpiece?.ApplyMarkedCuts();
+                    runtimeCraftMask?.ApplySizeFromBlank(runtimeBlankWorkpiece);
                     SetState(MaskWorkbenchState.FormSelection);
                     RefreshRuntimeViews();
                 });
@@ -306,11 +315,13 @@ namespace Interactable.MaskWorkbench
         {
             RemoveFirstRecipePageOfKind(CatalogPageKind.District);
             RunMiniGameOrComplete(
-                new MaskMiniGameRequest(MaskMiniGameKind.ShapeSegment, runtimeWorkpiece != null ? runtimeWorkpiece.SelectedSegment : MaskSegment.Middle),
+                new MaskMiniGameRequest(MaskMiniGameKind.ShapeSegment, runtimeCraftMask != null ? runtimeCraftMask.SelectedSegment : MaskSegment.Middle),
                 () =>
                 {
-                    runtimeWorkpiece?.SolidifySelectedShapes();
+                    runtimeCraftMask?.SolidifySelectedShapes();
+                    DestroyRuntimeBlankWorkpiece();
                     SetState(MaskWorkbenchState.InlaySelection);
+                    BeginInlaySelectionCursor();
                     RefreshRuntimeViews();
                 });
         }
@@ -318,6 +329,7 @@ namespace Interactable.MaskWorkbench
         private void ConfirmInlaySelection()
         {
             RemoveFirstRecipePageOfKind(CatalogPageKind.Faction);
+            DestroyRuntimeInlayCursor();
             BuildPendingInlayMiniGames();
             RunNextInlayMiniGameOrCompleteMask();
         }
@@ -334,10 +346,15 @@ namespace Interactable.MaskWorkbench
             DBMask.MaskData targetMaskData = session.MainRecipe.MaskData;
             DBMask.MaskData actualMaskData = session.BuildActualMaskData();
 
-            runtimeCompletedMask = itemsFactory.CreateMask(targetMaskData, actualMaskData);
-            AttachCompletedMaskToTable(runtimeCompletedMask);
-            DestroyRuntimeWorkpiece();
-            session.MarkCompleted(runtimeCompletedMask);
+            if (runtimeCraftMask == null)
+                runtimeCraftMask = itemsFactory.CreateMask(targetMaskData, actualMaskData);
+            else
+                runtimeCraftMask.Init(targetMaskData, actualMaskData);
+
+            AttachCraftMaskToTable(runtimeCraftMask);
+            DestroyRuntimeBlankWorkpiece();
+            runtimeCraftMask.HideCraftHelpers();
+            session.MarkCompleted(runtimeCraftMask);
 
             SetState(MaskWorkbenchState.Completed);
             RefreshRuntimeViews();
@@ -367,11 +384,11 @@ namespace Interactable.MaskWorkbench
         {
             pendingInlayMiniGames.Clear();
 
-            if (runtimeWorkpiece == null)
+            if (runtimeCraftMask == null)
                 return;
 
-            Dictionary<ResourceType, List<MaskWorkpiece.PlannedInlay>> groups = runtimeWorkpiece.BuildPlannedInlayGroups();
-            foreach (KeyValuePair<ResourceType, List<MaskWorkpiece.PlannedInlay>> group in groups)
+            Dictionary<ResourceType, List<MaskItem.PlannedInlay>> groups = runtimeCraftMask.BuildPlannedInlayGroups();
+            foreach (KeyValuePair<ResourceType, List<MaskItem.PlannedInlay>> group in groups)
             {
                 pendingInlayMiniGames.Enqueue(group);
             }
@@ -390,14 +407,14 @@ namespace Interactable.MaskWorkbench
                 new MaskMiniGameRequest(MaskMiniGameKind.InstallInlay, MaskSegment.Middle, activeInlayMiniGameGroup.Key),
                 () =>
                 {
-                    runtimeWorkpiece?.ApplyInlayGroup(activeInlayMiniGameGroup.Key, activeInlayMiniGameGroup.Value);
+                    runtimeCraftMask?.ApplyInlayGroup(activeInlayMiniGameGroup.Key, activeInlayMiniGameGroup.Value);
                     RunNextInlayMiniGameOrCompleteMask();
                 });
         }
 
         private void HandleProductionNavigation(Vector2 value)
         {
-            if (!IsCraftSurfaceInputActive() || runtimeWorkpiece == null)
+            if (!IsCraftSurfaceInputActive())
                 return;
 
             if (value.sqrMagnitude < 0.2f)
@@ -405,10 +422,19 @@ namespace Interactable.MaskWorkbench
 
             if (Mathf.Abs(value.y) >= Mathf.Abs(value.x))
             {
-                if (value.y > 0f)
-                    runtimeWorkpiece.SelectPreviousSegment();
-                else
-                    runtimeWorkpiece.SelectNextSegment();
+                if (state == MaskWorkbenchState.SizeSelection && runtimeBlankWorkpiece != null)
+                {
+                    if (value.y > 0f) runtimeBlankWorkpiece.SelectPreviousSegment();
+                    else runtimeBlankWorkpiece.SelectNextSegment();
+                    RefreshPartSelector();
+                }
+                else if ((state == MaskWorkbenchState.FormSelection || state == MaskWorkbenchState.InlaySelection) && runtimeCraftMask != null)
+                {
+                    if (value.y > 0f) runtimeCraftMask.SelectPreviousSegment();
+                    else runtimeCraftMask.SelectNextSegment();
+                    RefreshPartSelector();
+                    RefreshInlayCursorAnchor();
+                }
                 return;
             }
 
@@ -421,35 +447,88 @@ namespace Interactable.MaskWorkbench
 
                 case MaskWorkbenchState.FormSelection:
                     if (value.x > 0f)
-                        runtimeWorkpiece.SelectNextShape();
+                        runtimeCraftMask?.SelectNextShape();
                     else
-                        runtimeWorkpiece.SelectPreviousShape();
+                        runtimeCraftMask?.SelectPreviousShape();
                     break;
 
                 case MaskWorkbenchState.InlaySelection:
                     if (value.x > 0f)
-                        runtimeWorkpiece.SelectNextSocket();
+                        runtimeCraftMask?.SelectNextSocket();
                     else
-                        runtimeWorkpiece.SelectPreviousSocket();
+                        runtimeCraftMask?.SelectPreviousSocket();
+                    RefreshInlayCursorAnchor();
                     break;
             }
         }
 
         private void HandleInlayScroll(float scrollValue)
         {
-            if (!IsCraftSurfaceInputActive() || state != MaskWorkbenchState.InlaySelection || runtimeWorkpiece == null)
+            if (!IsCraftSurfaceInputActive() || state != MaskWorkbenchState.InlaySelection)
                 return;
 
+            if (runtimeInlayCursor == null)
+                BeginInlaySelectionCursor();
+
+            if (runtimeInlayCursor == null || !runtimeInlayCursor.HasOptions)
+                return;
+
+            if (scrollValue > 0f)
+                runtimeInlayCursor.ShowPrevious();
+            else if (scrollValue < 0f)
+                runtimeInlayCursor.ShowNext();
+        }
+
+        private void BeginInlaySelectionCursor()
+        {
+            if (runtimeCraftMask == null)
+                return;
+
+            DestroyRuntimeInlayCursor();
+
+            if (dbInlayVisual == null)
+                dbInlayVisual = FindFirstObjectByType<DBInlayVisual>();
+
+            runtimeInlayCursor = inlayCursorPrefab != null
+                ? Instantiate(inlayCursorPrefab, transform)
+                : new GameObject("Runtime_MaskInlaySelectionCursor").AddComponent<MaskInlaySelectionCursor>();
+
+            runtimeInlayCursor.Init(dbInlayVisual, CollectUniqueTrayInlayTypes(), clearSocketPreviewPrefab);
+            RefreshInlayCursorAnchor();
+        }
+
+        private void RefreshInlayCursorAnchor()
+        {
+            if (runtimeInlayCursor == null || runtimeCraftMask == null || state != MaskWorkbenchState.InlaySelection)
+                return;
+
+            runtimeInlayCursor.AttachTo(runtimeCraftMask.GetSelectedSocketAnchor());
+        }
+
+        private void DestroyRuntimeInlayCursor()
+        {
+            if (runtimeInlayCursor == null)
+                return;
+
+            Destroy(runtimeInlayCursor.gameObject);
+            runtimeInlayCursor = null;
+        }
+
+        private List<ResourceType> CollectUniqueTrayInlayTypes()
+        {
+            List<ResourceType> result = new();
             List<ResourceItem> inlays = CollectTrayInlays();
-            if (inlays.Count == 0)
-                return;
 
-            selectedTrayInlayIndex += scrollValue > 0f ? -1 : 1;
-            if (selectedTrayInlayIndex < 0) selectedTrayInlayIndex = inlays.Count - 1;
-            if (selectedTrayInlayIndex >= inlays.Count) selectedTrayInlayIndex = 0;
+            for (int i = 0; i < inlays.Count; i++)
+            {
+                ResourceType type = inlays[i] != null ? inlays[i].Type : ResourceType.None;
+                if (type == ResourceType.None || result.Contains(type))
+                    continue;
 
-            ResourceItem selected = inlays[selectedTrayInlayIndex];
-            runtimeWorkpiece.PlanInlayOnSelectedSocket(selected.Type);
+                result.Add(type);
+            }
+
+            return result;
         }
 
         private List<ResourceItem> CollectTrayInlays()
@@ -648,14 +727,14 @@ namespace Interactable.MaskWorkbench
             return null;
         }
 
-        private MaskWorkpiece CreateWorkpieceFromBlank(ResourceItem blank)
+        private MaskBlankWorkpiece CreateBlankWorkpieceFromBlank(ResourceItem blank)
         {
             ResourceType blankType = blank != null ? blank.Type : ResourceType.None;
-            Transform socket = workpieceSocket != null ? workpieceSocket : transform;
+            Transform socket = blankSocket != null ? blankSocket : transform;
 
-            MaskWorkpiece workpiece = workpiecePrefab != null
-                ? Instantiate(workpiecePrefab, socket)
-                : new GameObject("Runtime_MaskWorkpiece").AddComponent<MaskWorkpiece>();
+            MaskBlankWorkpiece workpiece = blankWorkpiecePrefab != null
+                ? Instantiate(blankWorkpiecePrefab, socket)
+                : new GameObject("Runtime_MaskBlankWorkpiece").AddComponent<MaskBlankWorkpiece>();
 
             workpiece.transform.SetParent(socket, false);
             workpiece.transform.localPosition = workpieceLocalPosition;
@@ -665,6 +744,17 @@ namespace Interactable.MaskWorkbench
             workpiece.gameObject.SetActive(true);
 
             return workpiece;
+        }
+
+        private MaskItem CreateCraftMask()
+        {
+            if (itemsFactory == null || session.MainRecipe == null)
+                return null;
+
+            MaskItem mask = itemsFactory.CreateMaskForCraft(session.MainRecipe.MaskData);
+            AttachCraftMaskToTable(mask);
+            mask.SetWorkbenchViewMode(MaskWorkbenchState.CraftSurfaceInspect);
+            return mask;
         }
 
         private void DestroyConsumedBlankResource()
@@ -677,21 +767,21 @@ namespace Interactable.MaskWorkbench
         }
 
 
-        private void DestroyRuntimeWorkpiece()
+        private void DestroyRuntimeBlankWorkpiece()
         {
-            if (runtimeWorkpiece == null)
+            if (runtimeBlankWorkpiece == null)
                 return;
 
-            Object.Destroy(runtimeWorkpiece.gameObject);
-            runtimeWorkpiece = null;
+            Object.Destroy(runtimeBlankWorkpiece.gameObject);
+            runtimeBlankWorkpiece = null;
         }
 
-        private void AttachCompletedMaskToTable(MaskItem mask)
+        private void AttachCraftMaskToTable(MaskItem mask)
         {
             if (mask == null)
                 return;
 
-            Transform socket = completedMaskSocket != null ? completedMaskSocket : transform;
+            Transform socket = maskSocket != null ? maskSocket : transform;
             mask.transform.SetParent(socket);
             mask.transform.localPosition = Vector3.zero;
             mask.transform.localRotation = Quaternion.identity;
@@ -704,20 +794,20 @@ namespace Interactable.MaskWorkbench
             if (handsController == null)
                 return false;
 
-            if (runtimeCompletedMask == null)
-                runtimeCompletedMask = session.CompletedMask;
+            if (runtimeCraftMask == null)
+                runtimeCraftMask = session.CompletedMask;
 
-            if (runtimeCompletedMask == null)
+            if (runtimeCraftMask == null)
                 return false;
 
-            MaskItem mask = runtimeCompletedMask;
-            runtimeCompletedMask = null;
+            MaskItem mask = runtimeCraftMask;
+            runtimeCraftMask = null;
 
             if (!handsController.GiveItem(mask))
             {
                 Debug.LogWarning($"{name}: failed to give completed mask to player hands. Returning it to table.");
-                runtimeCompletedMask = mask;
-                AttachCompletedMaskToTable(mask);
+                runtimeCraftMask = mask;
+                AttachCraftMaskToTable(mask);
                 return false;
             }
 
@@ -738,7 +828,8 @@ namespace Interactable.MaskWorkbench
 
             DestroyConsumedBlankResource();
 
-            DestroyRuntimeWorkpiece();
+            DestroyRuntimeBlankWorkpiece();
+            DestroyRuntimeInlayCursor();
         }
 
         private void CleanupEmptyRuntimeStack()
@@ -785,13 +876,44 @@ namespace Interactable.MaskWorkbench
             mainRecipeSlot?.RefreshVisual();
             recipePagesHolder?.RefreshCurrentContainerView();
             trayHolder?.RefreshCurrentContainerView();
-            runtimeWorkpiece?.SetViewMode(state);
+            if (state != MaskWorkbenchState.InlaySelection)
+                DestroyRuntimeInlayCursor();
+            else if (runtimeInlayCursor == null)
+                BeginInlaySelectionCursor();
+
+            runtimeBlankWorkpiece?.SetViewMode(state);
+            runtimeCraftMask?.SetWorkbenchViewMode(state);
+            RefreshPartSelector();
+            RefreshInlayCursorAnchor();
+        }
+
+        private void RefreshPartSelector()
+        {
+            if (partSelector == null)
+                return;
+
+            if (state == MaskWorkbenchState.SizeSelection && runtimeBlankWorkpiece != null)
+            {
+                partSelector.ShowAt(runtimeBlankWorkpiece.GetSelectedSelectionAnchor());
+                return;
+            }
+
+            if ((state == MaskWorkbenchState.FormSelection || state == MaskWorkbenchState.InlaySelection) && runtimeCraftMask != null)
+            {
+                partSelector.ShowAt(runtimeCraftMask.GetSelectedSelectionAnchor());
+                return;
+            }
+
+            partSelector.Hide();
         }
 
         private void EnsureReferences()
         {
             if (itemsFactory == null)
                 itemsFactory = FindFirstObjectByType<ItemsFactory>();
+
+            if (dbInlayVisual == null)
+                dbInlayVisual = FindFirstObjectByType<DBInlayVisual>();
 
             if (handsController == null)
                 handsController = FindFirstObjectByType<PlayerHandsController>();
@@ -841,7 +963,13 @@ namespace Interactable.MaskWorkbench
                 savedProductionState = nextState;
             }
 
-            runtimeWorkpiece?.SetViewMode(state);
+            if (state != MaskWorkbenchState.InlaySelection)
+                DestroyRuntimeInlayCursor();
+
+            runtimeBlankWorkpiece?.SetViewMode(state);
+            runtimeCraftMask?.SetWorkbenchViewMode(state);
+            RefreshPartSelector();
+            RefreshInlayCursorAnchor();
 
             if (logStateChanges)
                 Debug.Log($"{name}: MaskWorkbench state -> {state}");
@@ -943,10 +1071,22 @@ namespace Interactable.MaskWorkbench
             if (!IsCraftSurfaceInputActive())
                 return;
 
-            if (state != MaskWorkbenchState.SizeSelection || runtimeWorkpiece == null)
+            if (state == MaskWorkbenchState.SizeSelection && runtimeBlankWorkpiece != null)
+            {
+                runtimeBlankWorkpiece.ToggleSelectedSegmentCutMark();
+                RefreshPartSelector();
                 return;
+            }
 
-            runtimeWorkpiece.ToggleSelectedSegmentCutMark();
+            if (state == MaskWorkbenchState.InlaySelection && runtimeCraftMask != null)
+            {
+                if (runtimeInlayCursor == null)
+                    BeginInlaySelectionCursor();
+
+                runtimeCraftMask.ApplyInlayCursorToSelectedSocket(runtimeInlayCursor);
+                RefreshPartSelector();
+                RefreshInlayCursorAnchor();
+            }
         }
 
         private void OnScrollInlayPerformed(InputAction.CallbackContext ctx)

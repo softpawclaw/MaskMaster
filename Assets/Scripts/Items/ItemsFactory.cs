@@ -38,6 +38,13 @@ namespace Items
             return instance;
         }
 
+        public MaskItem CreateMaskForCraft(DBMask.MaskData targetMaskData)
+        {
+            var instance = Instantiate(maskItemPrefab);
+            instance.InitForCraft(targetMaskData);
+            return instance;
+        }
+
         private static void ResolveAndInitCatalogPage(CatalogPageItem instance, CatalogPageData data)
         {
             if (instance == null)

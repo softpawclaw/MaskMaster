@@ -10,13 +10,14 @@ namespace Interactable.MaskWorkbench
         public PaperStackItem RecipePagesStack { get; private set; }
         public TrayItem Tray { get; private set; }
         public ResourceItem BlankResource { get; private set; }
-        public MaskWorkpiece Workpiece { get; private set; }
+        public MaskBlankWorkpiece BlankWorkpiece { get; private set; }
+        public MaskItem CraftMask { get; private set; }
         public MaskItem CompletedMask { get; private set; }
 
         public bool HasStarted { get; private set; }
         public bool IsCompleted => CompletedMask != null;
 
-        public ResourceType ActualMaterial => Workpiece != null ? Workpiece.SourceBlankType : BlankResource != null ? BlankResource.Type : ResourceType.None;
+        public ResourceType ActualMaterial => CraftMask != null ? CraftMask.SourceBlankType : BlankResource != null ? BlankResource.Type : ResourceType.None;
 
         public void Init(MainRecipeItem mainRecipe, PaperStackItem recipePagesStack, TrayItem tray)
         {
@@ -24,15 +25,17 @@ namespace Interactable.MaskWorkbench
             RecipePagesStack = recipePagesStack;
             Tray = tray;
             BlankResource = null;
-            Workpiece = null;
+            BlankWorkpiece = null;
+            CraftMask = null;
             CompletedMask = null;
             HasStarted = false;
         }
 
-        public void MarkStarted(ResourceItem blankResource, MaskWorkpiece workpiece)
+        public void MarkStarted(ResourceItem blankResource, MaskBlankWorkpiece blankWorkpiece, MaskItem craftMask)
         {
             BlankResource = blankResource;
-            Workpiece = workpiece;
+            BlankWorkpiece = blankWorkpiece;
+            CraftMask = craftMask;
             HasStarted = true;
         }
 
@@ -41,18 +44,15 @@ namespace Interactable.MaskWorkbench
             if (MainRecipe == null)
                 return default;
 
-            DBMask.MaskData target = MainRecipe.MaskData;
-
-            // MVP: пока форма/размер/инкрустации не собираются честно.
-            // Фиксируем только реальную болванку через MistResistanceId пока не можем,
-            // поэтому возвращаем структуру заказа как есть. Реальное сравнение добавим
-            // на этапе полноценной сборки actualMaskData.
-            return target;
+            // MVP: реальные ResourceType/Size/Form уже живут в MaskItem.
+            // Структуру DBMask.MaskData не ломаем до отдельного прохода по сравнению качества/форм.
+            return MainRecipe.MaskData;
         }
 
         public void MarkCompleted(MaskItem completedMask)
         {
             CompletedMask = completedMask;
+            CraftMask = completedMask;
         }
 
         public void ClearRuntimeLinks()
@@ -61,7 +61,8 @@ namespace Interactable.MaskWorkbench
             RecipePagesStack = null;
             Tray = null;
             BlankResource = null;
-            Workpiece = null;
+            BlankWorkpiece = null;
+            CraftMask = null;
             CompletedMask = null;
             HasStarted = false;
         }

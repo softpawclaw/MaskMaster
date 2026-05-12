@@ -10,7 +10,7 @@ namespace Interactable.MaskWorkbench
     /// Runtime-заготовка на столе. Это не ItemBase и не ресурс с подноса.
     /// Визуал должен собираться руками в prefab: сегменты -> shape variants -> sockets.
     /// </summary>
-    public class MaskWorkpiece : MonoBehaviour
+    public class MaskWorkpiece : MonoBehaviour, IMaskSocketSelectionOwner
     {
         [Serializable]
         public struct PlannedInlay
@@ -267,20 +267,24 @@ namespace Interactable.MaskWorkbench
             return sockets[selectedSocketIndex] != null ? sockets[selectedSocketIndex].Socket : MaskSocket.None;
         }
 
-        public bool IsSocketCurrentlySelected(MaskSegment segment, MaskSocket socket)
+        public bool IsSocketCurrentlySelected(MaskWorkpieceSocketView socketView)
         {
-            if (segment != selectedSegment)
-                return false;
-
-            return GetSelectedSocket() == socket;
+            return socketView != null && ReferenceEquals(GetSelectedSocketView(), socketView);
         }
 
-        public bool HasPlannedInlay(MaskSegment segment, MaskSocket socket)
+        public bool HasPlannedInlay(MaskWorkpieceSocketView socketView)
         {
+            if (socketView == null)
+                return false;
+
+            if (socketView.HasPlannedInlay)
+                return true;
+
+            // Legacy fallback: старый MaskWorkpiece всё ещё хранит planned по enum-сокету.
             for (int i = 0; i < plannedInlays.Count; i++)
             {
                 PlannedInlay planned = plannedInlays[i];
-                if (planned.Segment == segment && planned.Socket == socket && planned.ResourceType != ResourceType.None)
+                if (planned.Segment == selectedSegment && planned.Socket == socketView.Socket && planned.ResourceType != ResourceType.None)
                     return true;
             }
 
