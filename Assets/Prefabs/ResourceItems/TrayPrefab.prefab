@@ -531,7 +531,7 @@ GameObject:
   - component: {fileID: 1755577381837217346}
   - component: {fileID: 6191303541330025586}
   m_Layer: 0
-  m_Name: Tray
+  m_Name: TrayPrefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

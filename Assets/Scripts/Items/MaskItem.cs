@@ -37,6 +37,13 @@ namespace Items
         [SerializeField] private ResourceType sourceBlankType = ResourceType.None;
         [SerializeField] private MaskSize selectedSize = MaskSize.None;
 
+        [Header("Craft Quality")]
+        [SerializeField] private float expectedQualityPoints;
+        [SerializeField] private float actualQualityPoints;
+
+        [Header("Mini Game Anchors")]
+        [SerializeField] private List<Transform> miniGameAnchors = new();
+
         [Header("Craft Visual")]
         [SerializeField] private List<MaskWorkpieceSegmentView> segmentViews = new();
 
@@ -44,6 +51,8 @@ namespace Items
         private readonly List<PlannedInlay> plannedInlays = new();
         private MaskSegment selectedSegment = MaskSegment.Middle;
         private int selectedSocketIndex;
+        private int lastMiniGameAnchorIndex = -1;
+        private MaskWorkbenchState currentWorkbenchViewMode = MaskWorkbenchState.CraftSurfaceInspect;
 
         public string OrderId => orderId;
         public DBMask.MaskData TargetMaskData => targetMaskData;
@@ -53,6 +62,8 @@ namespace Items
         public MaskSegment SelectedSegment => selectedSegment;
         public int SelectedSocketIndex => selectedSocketIndex;
         public IReadOnlyList<PlannedInlay> PlannedInlays => plannedInlays;
+        public float ExpectedQualityPoints => expectedQualityPoints;
+        public float ActualQualityPoints => actualQualityPoints;
 
         private static readonly MaskSegment[] SegmentOrder =
         {
@@ -68,7 +79,8 @@ namespace Items
             orderId = targetMask.OR_Id;
             EnsureRuntimeState();
             EnsureConfiguredViews();
-            RefreshCraftVisual(MaskWorkbenchState.Completed);
+            currentWorkbenchViewMode = MaskWorkbenchState.Completed;
+            RefreshCraftVisual(currentWorkbenchViewMode);
         }
 
         public void InitForCraft(DBMask.MaskData targetMask)
@@ -84,7 +96,11 @@ namespace Items
             EnsureConfiguredViews();
             selectedSegment = IsSegmentPresent(MaskSegment.Middle) ? MaskSegment.Middle : FindFirstPresentSegment();
             selectedSocketIndex = 0;
-            RefreshCraftVisual(MaskWorkbenchState.CraftSurfaceInspect);
+            expectedQualityPoints = 0f;
+            actualQualityPoints = 0f;
+            lastMiniGameAnchorIndex = -1;
+            currentWorkbenchViewMode = MaskWorkbenchState.CraftSurfaceInspect;
+            RefreshCraftVisual(currentWorkbenchViewMode);
         }
 
         public void SetSourceBlank(ResourceType blankType)
@@ -118,7 +134,8 @@ namespace Items
                 selectedSegment = FindFirstPresentSegment();
 
             selectedSocketIndex = 0;
-            RefreshCraftVisual(MaskWorkbenchState.FormSelection);
+            currentWorkbenchViewMode = MaskWorkbenchState.FormSelection;
+            RefreshCraftVisual(currentWorkbenchViewMode);
         }
 
         public bool IsSegmentPresent(MaskSegment segment)
@@ -146,7 +163,7 @@ namespace Items
 
                 selectedSegment = SegmentOrder[index];
                 selectedSocketIndex = 0;
-                RefreshCraftVisual(MaskWorkbenchState.FormSelection);
+                RefreshCraftVisual(currentWorkbenchViewMode);
                 return;
             }
         }
@@ -171,7 +188,8 @@ namespace Items
             if (runtime.ShapeIndex >= variantCount) runtime.ShapeIndex = 0;
 
             selectedSocketIndex = 0;
-            RefreshCraftVisual(MaskWorkbenchState.FormSelection);
+            currentWorkbenchViewMode = MaskWorkbenchState.FormSelection;
+            RefreshCraftVisual(currentWorkbenchViewMode);
         }
 
         public void SolidifySelectedShapes()
@@ -192,8 +210,43 @@ namespace Items
 
         public void SetWorkbenchViewMode(MaskWorkbenchState mode)
         {
-            RefreshCraftVisual(mode);
+            currentWorkbenchViewMode = mode;
+            RefreshCraftVisual(currentWorkbenchViewMode);
         }
+        public void AddCraftQualityPoints(float points)
+        {
+            actualQualityPoints += Mathf.Max(0f, points);
+        }
+
+        public void SetExpectedQualityPoints(float points)
+        {
+            expectedQualityPoints = Mathf.Max(0f, points);
+        }
+
+        public Transform GetRandomMiniGameAnchor()
+        {
+            miniGameAnchors.RemoveAll(anchor => anchor == null);
+
+            if (miniGameAnchors.Count == 0)
+            {
+                Debug.LogError($"{name}: mini-game anchor list is empty. Add transforms to MaskItem -> Mini Game Anchors.");
+                return null;
+            }
+
+            if (miniGameAnchors.Count == 1)
+            {
+                lastMiniGameAnchorIndex = 0;
+                return miniGameAnchors[0];
+            }
+
+            int index = UnityEngine.Random.Range(0, miniGameAnchors.Count);
+            if (index == lastMiniGameAnchorIndex)
+                index = (index + 1) % miniGameAnchors.Count;
+
+            lastMiniGameAnchorIndex = index;
+            return miniGameAnchors[index];
+        }
+
 
         public Transform GetSelectedSelectionAnchor()
         {
@@ -203,7 +256,8 @@ namespace Items
 
         public void HideCraftHelpers()
         {
-            RefreshCraftVisual(MaskWorkbenchState.Completed);
+            currentWorkbenchViewMode = MaskWorkbenchState.Completed;
+            RefreshCraftVisual(currentWorkbenchViewMode);
         }
 
         public void SelectPreviousSocket() => ChangeSocket(-1);
@@ -219,7 +273,8 @@ namespace Items
             if (selectedSocketIndex < 0) selectedSocketIndex = sockets.Count - 1;
             if (selectedSocketIndex >= sockets.Count) selectedSocketIndex = 0;
 
-            RefreshCraftVisual(MaskWorkbenchState.InlaySelection);
+            currentWorkbenchViewMode = MaskWorkbenchState.InlaySelection;
+            RefreshCraftVisual(currentWorkbenchViewMode);
         }
 
         public MaskWorkpieceSocketView GetSelectedSocketView()

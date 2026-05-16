@@ -11,6 +11,18 @@ namespace Items
         [SerializeField] private CatalogPageItem catalogPagePrefab;
         [SerializeField] private PaperStackItem paperStackItem;
         [SerializeField] private MaskItem maskItemPrefab;
+        [SerializeField] private TrayItem trayItemPrefab;
+
+        public TrayItem CreateTray()
+        {
+            if (trayItemPrefab == null)
+            {
+                Debug.LogError("ItemsFactory: trayItemPrefab is not assigned.");
+                return null;
+            }
+
+            return Instantiate(trayItemPrefab);
+        }
 
         public PaperStackItem CreatePaperStack()
         {

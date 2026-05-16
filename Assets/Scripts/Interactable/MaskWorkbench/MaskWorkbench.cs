@@ -49,6 +49,13 @@ namespace Interactable.MaskWorkbench
         [SerializeField] private string selectProductionActionName = "Select";
         [SerializeField] private string scrollInlayActionName = "ScrollWheel";
 
+        [Header("Mini Games")]
+        [SerializeField] private MaskMiniGameSystem miniGameSystem;
+        [SerializeField] private string cutSizeMiniGameConfigId = "MG_Cut_Size_Default";
+        [SerializeField] private string shapeMiniGameConfigId = "MG_Shape_Default";
+        [SerializeField] private string inlayMiniGameConfigPrefix = "MG_Inlay_";
+        [SerializeField] private string inlayMiniGameConfigSuffix = "_Default";
+
         [Header("Debug")]
         [SerializeField] private bool logStateChanges = true;
 
@@ -72,6 +79,7 @@ namespace Interactable.MaskWorkbench
         private readonly Queue<KeyValuePair<ResourceType, List<MaskItem.PlannedInlay>>> pendingInlayMiniGames = new();
         private KeyValuePair<ResourceType, List<MaskItem.PlannedInlay>> activeInlayMiniGameGroup;
         private MaskWorkbenchState stateBeforeMiniGame = MaskWorkbenchState.CraftSurfaceInspect;
+        private System.Action pendingMiniGameComplete;
         private InputAction advanceProductionAction;
         private InputAction navigateProductionAction;
         private InputAction selectProductionAction;
@@ -260,7 +268,7 @@ namespace Interactable.MaskWorkbench
                     break;
 
                 case MaskWorkbenchState.MiniGame:
-                    CompleteMiniGameStub(true);
+                    miniGameSystem?.Confirm();
                     break;
 
                 case MaskWorkbenchState.Completed:
@@ -368,16 +376,63 @@ namespace Interactable.MaskWorkbench
                 return;
             }
 
-            // MVP-заглушка: стейт MiniGame уже есть, но сама игра сразу считается успешной.
+            if (miniGameSystem == null)
+                miniGameSystem = FindFirstObjectByType<MaskMiniGameSystem>();
+
+            if (miniGameSystem == null)
+            {
+                Debug.LogError($"{name}: cannot run mini-game {request.Kind}. MaskMiniGameSystem is not assigned/found.");
+                return;
+            }
+
+            if (runtimeCraftMask == null)
+            {
+                Debug.LogError($"{name}: cannot run mini-game {request.Kind}. Runtime craft mask is null.");
+                return;
+            }
+
+            Transform anchor = runtimeCraftMask.GetRandomMiniGameAnchor();
+            if (anchor == null)
+            {
+                Debug.LogError($"{name}: cannot run mini-game {request.Kind}. MaskItem returned null mini-game anchor.");
+                return;
+            }
+
+            string configId = ResolveMiniGameConfigId(request);
+            MaskMiniGameRequest configuredRequest = request.WithConfigAndAnchor(configId, anchor);
+
+            pendingMiniGameComplete = onComplete;
             stateBeforeMiniGame = state;
             SetState(MaskWorkbenchState.MiniGame);
-            Debug.Log($"{name}: mini-game stub {request.Kind} ({request.Segment}, {request.ResourceType}, {request.Socket}) -> success.");
-            onComplete?.Invoke();
+
+            miniGameSystem.Run(configuredRequest, OnMiniGameComplete);
         }
 
-        private void CompleteMiniGameStub(bool success)
+        private void OnMiniGameComplete(MaskMiniGameResult result)
         {
-            Debug.Log($"{name}: manual mini-game stub complete, success={success}, previous={stateBeforeMiniGame}.");
+            runtimeCraftMask?.AddCraftQualityPoints(result.Score);
+            Debug.Log($"{name}: mini-game {result.Kind} ({result.ConfigId}) -> {result.Outcome}, score={result.Score}, t={result.CursorT:0.000}");
+
+            System.Action callback = pendingMiniGameComplete;
+            pendingMiniGameComplete = null;
+
+            SetState(stateBeforeMiniGame);
+            callback?.Invoke();
+        }
+
+        private string ResolveMiniGameConfigId(MaskMiniGameRequest request)
+        {
+            switch (request.Kind)
+            {
+                case MaskMiniGameKind.CutSegment:
+                    return cutSizeMiniGameConfigId;
+                case MaskMiniGameKind.ShapeSegment:
+                    return shapeMiniGameConfigId;
+                case MaskMiniGameKind.InstallInlay:
+                    return $"{inlayMiniGameConfigPrefix}{request.ResourceType}{inlayMiniGameConfigSuffix}";
+                default:
+                    return null;
+            }
         }
 
         private void BuildPendingInlayMiniGames()
@@ -876,15 +931,22 @@ namespace Interactable.MaskWorkbench
             mainRecipeSlot?.RefreshVisual();
             recipePagesHolder?.RefreshCurrentContainerView();
             trayHolder?.RefreshCurrentContainerView();
+            MaskWorkbenchState visualState = GetVisualStateForRuntimeObjects();
+
             if (state != MaskWorkbenchState.InlaySelection)
                 DestroyRuntimeInlayCursor();
             else if (runtimeInlayCursor == null)
                 BeginInlaySelectionCursor();
 
-            runtimeBlankWorkpiece?.SetViewMode(state);
-            runtimeCraftMask?.SetWorkbenchViewMode(state);
+            runtimeBlankWorkpiece?.SetViewMode(visualState);
+            runtimeCraftMask?.SetWorkbenchViewMode(visualState);
             RefreshPartSelector();
             RefreshInlayCursorAnchor();
+        }
+
+        private MaskWorkbenchState GetVisualStateForRuntimeObjects()
+        {
+            return state == MaskWorkbenchState.MiniGame ? stateBeforeMiniGame : state;
         }
 
         private void RefreshPartSelector()
@@ -923,6 +985,9 @@ namespace Interactable.MaskWorkbench
 
             if (playerInput == null)
                 playerInput = FindFirstObjectByType<PlayerInput>();
+
+            if (miniGameSystem == null)
+                miniGameSystem = FindFirstObjectByType<MaskMiniGameSystem>();
         }
 
         private static int CompareCatalogPagesByProductionOrder(CatalogPageItem a, CatalogPageItem b)
@@ -966,8 +1031,9 @@ namespace Interactable.MaskWorkbench
             if (state != MaskWorkbenchState.InlaySelection)
                 DestroyRuntimeInlayCursor();
 
-            runtimeBlankWorkpiece?.SetViewMode(state);
-            runtimeCraftMask?.SetWorkbenchViewMode(state);
+            MaskWorkbenchState visualState = GetVisualStateForRuntimeObjects();
+            runtimeBlankWorkpiece?.SetViewMode(visualState);
+            runtimeCraftMask?.SetWorkbenchViewMode(visualState);
             RefreshPartSelector();
             RefreshInlayCursorAnchor();
 
@@ -1070,6 +1136,12 @@ namespace Interactable.MaskWorkbench
 
             if (!IsCraftSurfaceInputActive())
                 return;
+
+            if (state == MaskWorkbenchState.MiniGame)
+            {
+                miniGameSystem?.Confirm();
+                return;
+            }
 
             if (state == MaskWorkbenchState.SizeSelection && runtimeBlankWorkpiece != null)
             {

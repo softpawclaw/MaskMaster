@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -32,6 +32,7 @@ namespace Items
 
         public override void OnTakenToHand(Transform handSocket)
         {
+            takenToHand = true;
             base.OnTakenToHand(handSocket);
             selectedIndex = 0;
             RefreshHandView();
@@ -39,6 +40,7 @@ namespace Items
 
         public override void OnRemovedFromHand()
         {
+            takenToHand = false;
             base.OnRemovedFromHand();
             selectedIndex = -1;
             RefreshSelectionView();
@@ -179,7 +181,12 @@ namespace Items
 
         private void Start()
         {
-            OnRemovedFromHand();
+            // Auto-created trays can be given to the player before Unity calls Start().
+            // In that case calling OnRemovedFromHand() here would undo OnTakenToHand():
+            // the tray and all resources inside it would be moved back to the world layer
+            // and start clipping through walls.
+            if (!takenToHand)
+                OnRemovedFromHand();
         }
 
         protected override void OnContainerChanged()

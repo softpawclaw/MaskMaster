@@ -1,4 +1,5 @@
-﻿using Player;
+﻿using Global;
+using Player;
 using UnityEngine;
 
 namespace Items
@@ -44,7 +45,7 @@ namespace Items
 
         protected override void ReplaceItem(PlayerHandsController hands)
         {
-            var tray = hands.GetTrayInHands();
+            var tray = EnsureTrayInHands(hands);
             if (tray == null)
             {
                 Debug.Log("No tray in hands");
@@ -70,6 +71,34 @@ namespace Items
             }
 
             AttachItem(trayResource);
+        }
+
+        private TrayItem EnsureTrayInHands(PlayerHandsController hands)
+        {
+            if (hands == null)
+                return null;
+
+            var tray = hands.GetTrayInHands();
+            if (tray != null)
+                return tray;
+
+            var factory = Linker.Instance != null ? Linker.Instance.ItemsFactory : null;
+            if (factory == null)
+            {
+                Debug.LogError("ResourcePlaceHolder: ItemsFactory is not available, cannot auto-create tray.");
+                return null;
+            }
+
+            tray = factory.CreateTray();
+            if (tray == null)
+                return null;
+
+            if (hands.GiveItem(tray))
+                return tray;
+
+            Debug.LogWarning("ResourcePlaceHolder: failed to give auto-created tray to player hands.");
+            Destroy(tray.gameObject);
+            return null;
         }
 
         private void InitOnStart()
