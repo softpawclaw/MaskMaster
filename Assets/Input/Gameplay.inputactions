@@ -985,16 +985,7 @@
             "id": "f2e1648b-95f7-433f-b4ee-1fcd55436c80",
             "actions": [
                 {
-                    "name": "ToggleActiveStack",
-                    "type": "Button",
-                    "id": "e719fa69-c6be-4b63-9866-3b5466f4a011",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "NextPage",
+                    "name": "PreviousPage",
                     "type": "Button",
                     "id": "06df183b-3ef0-4668-a987-2226b65c5b5a",
                     "expectedControlType": "",
@@ -1003,7 +994,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "PreviousPage",
+                    "name": "NextPage",
                     "type": "Button",
                     "id": "8f242438-267b-4d97-93f3-503bf2520a5a",
                     "expectedControlType": "",
@@ -1019,31 +1010,18 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "ScrollWheel",
+                    "type": "PassThrough",
+                    "id": "501d4032-def2-487e-a2c0-9ba3f65c0ad3",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
-                {
-                    "name": "",
-                    "id": "1c3895d3-8c51-41f4-bfd1-0da4fe62fc25",
-                    "path": "<Keyboard>/e",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": ";Keyboard&Mouse",
-                    "action": "ToggleActiveStack",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "df313b36-e9cc-4968-9070-2fa4e4eade27",
-                    "path": "<Keyboard>/q",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": ";Keyboard&Mouse",
-                    "action": "ToggleActiveStack",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
                 {
                     "name": "",
                     "id": "75a815e0-f526-424e-85b7-6ab5e2ceb0f1",
@@ -1051,7 +1029,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "NextPage",
+                    "action": "PreviousPage",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -1062,7 +1040,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "PreviousPage",
+                    "action": "NextPage",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -1074,6 +1052,17 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "TransferPage",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5c40531a-23b6-4e26-8cdf-27027ce53518",
+                    "path": "<Mouse>/scroll",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "ScrollWheel",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

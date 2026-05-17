@@ -42,6 +42,12 @@ namespace Interactable.Workbench
         [SerializeField] private string previousPageActionName = "PreviousPage";
         [SerializeField] private string transferPageActionName = "TransferPage";
 
+        [Tooltip("Mouse wheel action used to flip the currently active paper stack. Expected value type: Vector2 or Axis/float.")]
+        [SerializeField] private string scrollPagesActionName = "ScrollWheel";
+
+        [Tooltip("Optional directional navigation action. If present, X < 0 selects left stack, X > 0 selects right stack.")]
+        [SerializeField] private string navigateStacksActionName = "Move";
+
         [Header("Stack Highlights")]
         [SerializeField] private GameObject rightStackHighlight;
         [SerializeField] private GameObject leftStackHighlight;
@@ -59,6 +65,8 @@ namespace Interactable.Workbench
         private InputAction nextPageAction;
         private InputAction previousPageAction;
         private InputAction transferPageAction;
+        private InputAction scrollPagesAction;
+        private InputAction navigateStacksAction;
         private bool inputSubscribed;
 
         private readonly Dictionary<string, CatalogDrawer> drawerMap = new();
@@ -381,6 +389,8 @@ namespace Interactable.Workbench
             nextPageAction = null;
             previousPageAction = null;
             transferPageAction = null;
+            scrollPagesAction = null;
+            navigateStacksAction = null;
 
             if (playerInput == null)
                 return;
@@ -393,6 +403,8 @@ namespace Interactable.Workbench
             nextPageAction = FindAction(currentMap, nextPageActionName);
             previousPageAction = FindAction(currentMap, previousPageActionName);
             transferPageAction = FindAction(currentMap, transferPageActionName);
+            scrollPagesAction = FindAction(currentMap, scrollPagesActionName);
+            navigateStacksAction = FindAction(currentMap, navigateStacksActionName);
         }
 
         private static InputAction FindAction(InputActionMap map, string actionName)
@@ -416,6 +428,10 @@ namespace Interactable.Workbench
                 previousPageAction.performed += OnPreviousPagePerformed;
             if (transferPageAction != null)
                 transferPageAction.performed += OnTransferPagePerformed;
+            if (scrollPagesAction != null)
+                scrollPagesAction.performed += OnScrollPagesPerformed;
+            if (navigateStacksAction != null)
+                navigateStacksAction.performed += OnNavigateStacksPerformed;
 
             inputSubscribed = true;
         }
@@ -433,6 +449,10 @@ namespace Interactable.Workbench
                 previousPageAction.performed -= OnPreviousPagePerformed;
             if (transferPageAction != null)
                 transferPageAction.performed -= OnTransferPagePerformed;
+            if (scrollPagesAction != null)
+                scrollPagesAction.performed -= OnScrollPagesPerformed;
+            if (navigateStacksAction != null)
+                navigateStacksAction.performed -= OnNavigateStacksPerformed;
 
             inputSubscribed = false;
         }
@@ -446,13 +466,47 @@ namespace Interactable.Workbench
         private void OnNextPagePerformed(InputAction.CallbackContext ctx)
         {
             if (!ctx.performed || !IsStacksInputActive()) return;
-            SelectNextActiveStackPage();
+            SelectStackWithFallback(StackSide.Right);
         }
 
         private void OnPreviousPagePerformed(InputAction.CallbackContext ctx)
         {
             if (!ctx.performed || !IsStacksInputActive()) return;
-            SelectPreviousActiveStackPage();
+            SelectStackWithFallback(StackSide.Left);
+        }
+
+        private void SelectStackWithFallback(StackSide requestedSide)
+        {
+            if (activeStackSide != requestedSide)
+            {
+                SetActiveStack(requestedSide);
+                return;
+            }
+
+            SetActiveStack(requestedSide == StackSide.Right ? StackSide.Left : StackSide.Right);
+        }
+
+        private void OnScrollPagesPerformed(InputAction.CallbackContext ctx)
+        {
+            if (!ctx.performed || !IsStacksInputActive()) return;
+
+            float scrollValue = ReadScrollValue(ctx);
+            if (Mathf.Approximately(scrollValue, 0f)) return;
+
+            if (scrollValue > 0f)
+                SelectNextActiveStackPage();
+            else
+                SelectPreviousActiveStackPage();
+        }
+
+        private void OnNavigateStacksPerformed(InputAction.CallbackContext ctx)
+        {
+            if (!ctx.performed || !IsStacksInputActive()) return;
+
+            Vector2 value = ctx.ReadValue<Vector2>();
+            if (Mathf.Approximately(value.x, 0f)) return;
+
+            SetActiveStack(value.x > 0f ? StackSide.Right : StackSide.Left);
         }
 
         private void OnTransferPagePerformed(InputAction.CallbackContext ctx)
@@ -467,6 +521,18 @@ namespace Interactable.Workbench
             if (controller == null) return false;
             if (controller.ActiveWorkbench != this) return false;
             return catalogState == CatalogState.DrawerInspect;
+        }
+
+        private float ReadScrollValue(InputAction.CallbackContext context)
+        {
+            try
+            {
+                return context.ReadValue<Vector2>().y;
+            }
+            catch (System.InvalidOperationException)
+            {
+                return context.ReadValue<float>();
+            }
         }
 
         private void EnsureRuntimeStacks()
