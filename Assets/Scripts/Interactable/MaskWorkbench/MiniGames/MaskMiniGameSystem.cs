@@ -238,6 +238,20 @@ namespace Interactable.MaskWorkbench
             return go;
         }
 
+
+        public float GetMaxScore(string configId)
+        {
+            MaskMiniGameConfig config = FindConfig(configId);
+            if (config == null || config.Zones == null || config.Zones.Length == 0)
+                return 0f;
+
+            float maxScore = 0f;
+            for (int i = 0; i < config.Zones.Length; i++)
+                maxScore = Mathf.Max(maxScore, config.Zones[i].Score);
+
+            return maxScore;
+        }
+
         private MaskMiniGameConfig FindConfig(string configId)
         {
             if (!string.IsNullOrWhiteSpace(configId) && configs != null)

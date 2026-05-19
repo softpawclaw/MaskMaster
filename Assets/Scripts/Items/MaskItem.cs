@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using DB;
 using Enums;
 using Interactable.MaskWorkbench;
@@ -22,6 +23,92 @@ namespace Items
             public MaskWorkpieceSocketView SocketView;
         }
 
+        [Serializable]
+        public struct CraftInlayData
+        {
+            public MaskSegment Segment;
+            public MaskSocket Socket;
+            public ResourceType ResourceType;
+
+            public CraftInlayData(MaskSegment segment, MaskSocket socket, ResourceType resourceType)
+            {
+                Segment = segment;
+                Socket = socket;
+                ResourceType = resourceType;
+            }
+        }
+
+        [Serializable]
+        public struct CraftShapeData
+        {
+            public MaskSegment Segment;
+            public int ShapeIndex;
+
+            public CraftShapeData(MaskSegment segment, int shapeIndex)
+            {
+                Segment = segment;
+                ShapeIndex = shapeIndex;
+            }
+        }
+
+        [Serializable]
+        public struct CraftMiniGameData
+        {
+            public MaskMiniGameKind Kind;
+            public string ConfigId;
+            public MaskMiniGameOutcome Outcome;
+            public float Score;
+            public float CursorT;
+
+            public CraftMiniGameData(MaskMiniGameResult result)
+            {
+                Kind = result.Kind;
+                ConfigId = result.ConfigId;
+                Outcome = result.Outcome;
+                Score = result.Score;
+                CursorT = result.CursorT;
+            }
+        }
+
+        [Serializable]
+        public class CraftResultData
+        {
+            public string Label;
+            public string OrderId;
+            public string MaskId;
+            public string ClientId;
+            public string FaceCoverId;
+            public string MistResistanceId;
+            public string DistrictId;
+            public string FactionId;
+            public ResourceType BlankResourceType = ResourceType.None;
+            public MaskSize Size = MaskSize.None;
+            public float MaxQualityPoints;
+            public float ActualQualityPoints;
+            public List<CraftShapeData> Shapes = new();
+            public List<CraftInlayData> Inlays = new();
+            public List<CraftMiniGameData> MiniGames = new();
+
+            public void Clear(string label)
+            {
+                Label = label;
+                OrderId = string.Empty;
+                MaskId = string.Empty;
+                ClientId = string.Empty;
+                FaceCoverId = string.Empty;
+                MistResistanceId = string.Empty;
+                DistrictId = string.Empty;
+                FactionId = string.Empty;
+                BlankResourceType = ResourceType.None;
+                Size = MaskSize.None;
+                MaxQualityPoints = 0f;
+                ActualQualityPoints = 0f;
+                Shapes.Clear();
+                Inlays.Clear();
+                MiniGames.Clear();
+            }
+        }
+
         private class SegmentRuntime
         {
             public bool IsPresent = true;
@@ -40,6 +127,11 @@ namespace Items
         [Header("Craft Quality")]
         [SerializeField] private float expectedQualityPoints;
         [SerializeField] private float actualQualityPoints;
+
+        [Header("Craft Data Log")]
+        [SerializeField] private bool logCraftData = true;
+        [SerializeField] private CraftResultData expectedCraftData = new();
+        [SerializeField] private CraftResultData actualCraftData = new();
 
         [Header("Mini Game Anchors")]
         [SerializeField] private List<Transform> miniGameAnchors = new();
@@ -64,6 +156,8 @@ namespace Items
         public IReadOnlyList<PlannedInlay> PlannedInlays => plannedInlays;
         public float ExpectedQualityPoints => expectedQualityPoints;
         public float ActualQualityPoints => actualQualityPoints;
+        public CraftResultData ExpectedCraftData => expectedCraftData;
+        public CraftResultData ActualCraftData => actualCraftData;
 
         private static readonly MaskSegment[] SegmentOrder =
         {
@@ -98,14 +192,44 @@ namespace Items
             selectedSocketIndex = 0;
             expectedQualityPoints = 0f;
             actualQualityPoints = 0f;
+            expectedCraftData.Clear("EXPECTED");
+            actualCraftData.Clear("ACTUAL");
             lastMiniGameAnchorIndex = -1;
             currentWorkbenchViewMode = MaskWorkbenchState.CraftSurfaceInspect;
             RefreshCraftVisual(currentWorkbenchViewMode);
         }
 
+        public void BeginCraftDataTracking(MainRecipeItem recipe)
+        {
+            expectedCraftData.Clear("EXPECTED");
+            actualCraftData.Clear("ACTUAL");
+            expectedQualityPoints = 0f;
+            actualQualityPoints = 0f;
+
+            if (recipe == null)
+            {
+                Debug.LogWarning($"{name}: cannot fill expected craft data. MainRecipeItem is null.");
+                return;
+            }
+
+            DBMask.MaskData data = recipe.MaskData;
+            FillRecipeIdentity(expectedCraftData, data);
+            FillRecipeIdentity(actualCraftData, data);
+
+            expectedCraftData.BlankResourceType = recipe.Material;
+            expectedCraftData.Size = recipe.MaskSize;
+
+            FillDefaultExpectedShapes(expectedCraftData, expectedCraftData.Size);
+            FillExpectedInlays(expectedCraftData, recipe.Sockets);
+
+            LogCraftBlock("EXPECTED DATA FILLED", expectedCraftData);
+        }
+
         public void SetSourceBlank(ResourceType blankType)
         {
             sourceBlankType = blankType;
+            actualCraftData.BlankResourceType = blankType;
+            LogCraftBlock("ACTUAL BLANK RECORDED", actualCraftData);
         }
 
         public void ApplySizeFromBlank(MaskBlankWorkpiece blank)
@@ -129,6 +253,9 @@ namespace Items
                 SetSegmentPresent(MaskSegment.Middle, true);
 
             selectedSize = ResolveSizeFromPresence();
+            actualCraftData.Size = selectedSize;
+            RefreshActualShapesSnapshot();
+            LogCraftBlock("ACTUAL SIZE RECORDED", actualCraftData);
 
             if (!IsSegmentPresent(selectedSegment))
                 selectedSegment = FindFirstPresentSegment();
@@ -190,6 +317,8 @@ namespace Items
             selectedSocketIndex = 0;
             currentWorkbenchViewMode = MaskWorkbenchState.FormSelection;
             RefreshCraftVisual(currentWorkbenchViewMode);
+            RefreshActualShapesSnapshot();
+            LogCraftBlock("ACTUAL SHAPE CHANGED", actualCraftData);
         }
 
         public void SolidifySelectedShapes()
@@ -206,6 +335,9 @@ namespace Items
                 view.SetBlankMeshVisible(false);
                 view.SolidifyShape(GetShapeIndex(view.Segment));
             }
+
+            RefreshActualShapesSnapshot();
+            LogCraftBlock("ACTUAL SHAPES SOLIDIFIED", actualCraftData);
         }
 
         public void SetWorkbenchViewMode(MaskWorkbenchState mode)
@@ -215,12 +347,46 @@ namespace Items
         }
         public void AddCraftQualityPoints(float points)
         {
-            actualQualityPoints += Mathf.Max(0f, points);
+            float safePoints = Mathf.Max(0f, points);
+            actualQualityPoints += safePoints;
+            actualCraftData.ActualQualityPoints = actualQualityPoints;
+            LogCraftBlock("ACTUAL QUALITY POINTS RECORDED", actualCraftData);
+        }
+
+        public void AddExpectedQualityPoints(float points)
+        {
+            float safePoints = Mathf.Max(0f, points);
+            expectedQualityPoints += safePoints;
+            expectedCraftData.MaxQualityPoints = expectedQualityPoints;
+            LogCraftBlock("EXPECTED QUALITY POINTS RECORDED", expectedCraftData);
         }
 
         public void SetExpectedQualityPoints(float points)
         {
             expectedQualityPoints = Mathf.Max(0f, points);
+            expectedCraftData.MaxQualityPoints = expectedQualityPoints;
+            LogCraftBlock("EXPECTED QUALITY POINTS SET", expectedCraftData);
+        }
+
+        public void RecordMiniGameResult(MaskMiniGameResult result)
+        {
+            actualCraftData.MiniGames.Add(new CraftMiniGameData(result));
+            AddCraftQualityPoints(result.Score);
+            LogCraftBlock($"ACTUAL MINI-GAME RECORDED: {result.Kind}", actualCraftData);
+        }
+
+        public void RecordAutoCompletedMiniGame(MaskMiniGameRequest request, float score)
+        {
+            MaskMiniGameResult result = new MaskMiniGameResult(
+                request.ConfigId,
+                request.Kind,
+                MaskMiniGameOutcome.Good,
+                Mathf.Max(0f, score),
+                1f);
+
+            actualCraftData.MiniGames.Add(new CraftMiniGameData(result));
+            AddCraftQualityPoints(score);
+            LogCraftBlock($"ACTUAL AUTO MINI-GAME RECORDED: {request.Kind}", actualCraftData);
         }
 
         public Transform GetRandomMiniGameAnchor()
@@ -437,9 +603,159 @@ namespace Items
                     continue;
 
                 socketView.SolidifyPlannedInlay();
+                RecordActualInlay(planned.Segment, socketView.Socket, resourceType);
             }
 
             Debug.Log($"{name}: installed inlay group {resourceType}, count={group.Count}.");
+            LogCraftBlock($"ACTUAL INLAY GROUP RECORDED: {resourceType}", actualCraftData);
+        }
+
+        public void LogFinalCraftDataDump()
+        {
+            StringBuilder builder = new StringBuilder(1024);
+            builder.AppendLine($"[{name}] MASK CRAFT FINAL DATA DUMP");
+            AppendCraftBlock(builder, expectedCraftData);
+            AppendCraftBlock(builder, actualCraftData);
+            Debug.Log(builder.ToString());
+        }
+
+        private void FillRecipeIdentity(CraftResultData target, DBMask.MaskData data)
+        {
+            target.OrderId = data.OR_Id;
+            target.MaskId = data.Id;
+            target.ClientId = data.ClientId;
+            target.FaceCoverId = data.FaceCoverId;
+            target.MistResistanceId = data.MistResistanceId;
+            target.DistrictId = data.DistrictId;
+            target.FactionId = data.FactionId;
+        }
+
+        private void FillExpectedInlays(CraftResultData target, DBMaskCombination.MaskSocketResource[] sockets)
+        {
+            target.Inlays.Clear();
+            if (sockets == null)
+                return;
+
+            for (int i = 0; i < sockets.Length; i++)
+            {
+                if (sockets[i].ResourceType == ResourceType.None)
+                    continue;
+
+                target.Inlays.Add(new CraftInlayData(MaskSegment.Middle, sockets[i].Socket, sockets[i].ResourceType));
+            }
+        }
+
+        private void FillDefaultExpectedShapes(CraftResultData target, MaskSize size)
+        {
+            target.Shapes.Clear();
+
+            bool upper = size == MaskSize.Large || size == MaskSize.Medium;
+            bool middle = size != MaskSize.None;
+            bool lower = size == MaskSize.Large;
+
+            if (upper) target.Shapes.Add(new CraftShapeData(MaskSegment.Upper, 0));
+            if (middle) target.Shapes.Add(new CraftShapeData(MaskSegment.Middle, 0));
+            if (lower) target.Shapes.Add(new CraftShapeData(MaskSegment.Lower, 0));
+        }
+
+        private void RefreshActualShapesSnapshot()
+        {
+            actualCraftData.Shapes.Clear();
+            for (int i = 0; i < SegmentOrder.Length; i++)
+            {
+                MaskSegment segment = SegmentOrder[i];
+                if (!IsSegmentPresent(segment))
+                    continue;
+
+                actualCraftData.Shapes.Add(new CraftShapeData(segment, GetShapeIndex(segment)));
+            }
+        }
+
+        private void RecordActualInlay(MaskSegment segment, MaskSocket socket, ResourceType resourceType)
+        {
+            if (resourceType == ResourceType.None || socket == MaskSocket.None)
+                return;
+
+            for (int i = 0; i < actualCraftData.Inlays.Count; i++)
+            {
+                CraftInlayData existing = actualCraftData.Inlays[i];
+                if (existing.Segment != segment || existing.Socket != socket)
+                    continue;
+
+                actualCraftData.Inlays[i] = new CraftInlayData(segment, socket, resourceType);
+                return;
+            }
+
+            actualCraftData.Inlays.Add(new CraftInlayData(segment, socket, resourceType));
+        }
+
+        private void LogCraftBlock(string title, CraftResultData data)
+        {
+            if (!logCraftData)
+                return;
+
+            StringBuilder builder = new StringBuilder(512);
+            builder.AppendLine($"[{name}] {title}");
+            AppendCraftBlock(builder, data);
+            Debug.Log(builder.ToString());
+        }
+
+        private static void AppendCraftBlock(StringBuilder builder, CraftResultData data)
+        {
+            builder.AppendLine($"--- {data.Label} ---");
+            builder.AppendLine($"OrderId={data.OrderId}, MaskId={data.MaskId}, ClientId={data.ClientId}");
+            builder.AppendLine($"Tags: FaceCover={data.FaceCoverId}, MistResistance={data.MistResistanceId}, District={data.DistrictId}, Faction={data.FactionId}");
+            builder.AppendLine($"Blank={data.BlankResourceType}, Size={data.Size}, MaxQuality={data.MaxQualityPoints:0.##}, ActualQuality={data.ActualQualityPoints:0.##}");
+            builder.AppendLine($"Shapes: {FormatShapes(data.Shapes)}");
+            builder.AppendLine($"Inlays: {FormatInlays(data.Inlays)}");
+            builder.AppendLine($"MiniGames: {FormatMiniGames(data.MiniGames)}");
+        }
+
+        private static string FormatShapes(List<CraftShapeData> shapes)
+        {
+            if (shapes == null || shapes.Count == 0)
+                return "<none>";
+
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < shapes.Count; i++)
+            {
+                if (i > 0) builder.Append(", ");
+                builder.Append(shapes[i].Segment).Append("=Shape_").Append(shapes[i].ShapeIndex);
+            }
+            return builder.ToString();
+        }
+
+        private static string FormatInlays(List<CraftInlayData> inlays)
+        {
+            if (inlays == null || inlays.Count == 0)
+                return "<none>";
+
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < inlays.Count; i++)
+            {
+                if (i > 0) builder.Append(", ");
+                builder.Append(inlays[i].Segment).Append('/').Append(inlays[i].Socket).Append('=').Append(inlays[i].ResourceType);
+            }
+            return builder.ToString();
+        }
+
+        private static string FormatMiniGames(List<CraftMiniGameData> miniGames)
+        {
+            if (miniGames == null || miniGames.Count == 0)
+                return "<none>";
+
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < miniGames.Count; i++)
+            {
+                if (i > 0) builder.Append(" | ");
+                CraftMiniGameData item = miniGames[i];
+                builder.Append(item.Kind)
+                    .Append('(').Append(item.ConfigId).Append(")=")
+                    .Append(item.Outcome)
+                    .Append(", score=").Append(item.Score.ToString("0.##"))
+                    .Append(", t=").Append(item.CursorT.ToString("0.000"));
+            }
+            return builder.ToString();
         }
 
         private void RefreshCraftVisual(MaskWorkbenchState mode)

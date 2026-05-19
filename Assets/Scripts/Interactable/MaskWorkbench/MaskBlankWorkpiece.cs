@@ -141,6 +141,11 @@ namespace Interactable.MaskWorkbench
             RefreshVisuals(MaskWorkbenchState.FormSelection);
         }
 
+        public bool HasAnyMarkedCuts()
+        {
+            return CountMarkedForCut() > 0;
+        }
+
         public bool[] BuildPresenceSnapshot()
         {
             EnsureRuntimeState();
