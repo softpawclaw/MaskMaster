@@ -13,6 +13,52 @@ namespace Items
         [SerializeField] private MaskItem maskItemPrefab;
         [SerializeField] private TrayItem trayItemPrefab;
 
+        [System.Serializable]
+        private struct ResourcePrefabData
+        {
+            public ResourceType ResourceType;
+            public ResourceItem Prefab;
+        }
+
+        [Header("Resources")]
+        [SerializeField] private ResourcePrefabData[] resourcePrefabs;
+
+        public ResourceItem CreateResource(ResourceType type)
+        {
+            if (type == ResourceType.None)
+            {
+                Debug.LogWarning("ItemsFactory: refused to create ResourceType.None.");
+                return null;
+            }
+
+            if (resourcePrefabs == null || resourcePrefabs.Length == 0)
+            {
+                Debug.LogError($"ItemsFactory: resourcePrefabs is empty, cannot create resource '{type}'.");
+                return null;
+            }
+
+            for (int i = 0; i < resourcePrefabs.Length; i++)
+            {
+                if (resourcePrefabs[i].ResourceType != type)
+                    continue;
+
+                if (resourcePrefabs[i].Prefab == null)
+                {
+                    Debug.LogError($"ItemsFactory: prefab for resource '{type}' is not assigned.");
+                    return null;
+                }
+
+                var instance = Instantiate(resourcePrefabs[i].Prefab);
+                if (instance.Type != type)
+                    Debug.LogWarning($"ItemsFactory: created resource prefab for key '{type}', but prefab has ResourceItem.Type='{instance.Type}'. Check prefab config.");
+
+                return instance;
+            }
+
+            Debug.LogError($"ItemsFactory: no resource prefab configured for '{type}'.");
+            return null;
+        }
+
         public TrayItem CreateTray()
         {
             if (trayItemPrefab == null)

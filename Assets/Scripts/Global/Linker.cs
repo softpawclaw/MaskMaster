@@ -27,6 +27,8 @@ namespace Global
         [SerializeField] private DBDistrict dbDistrict = null;
         [SerializeField] private DBFaction dbFaction = null;
         [SerializeField] private DBMaskCombination dbMaskCombination = null;
+        [SerializeField] private DBInlayVisual dbInlayVisual = null;
+        [SerializeField] private DBWarehouse dbWarehouse = null;
         [FormerlySerializedAs("catalogPageDatabase")] [SerializeField] private DBCatalogPage dbCatalogPage = null;
         
         [SerializeField] private ItemsFactory itemsFactory = null;
@@ -49,6 +51,7 @@ namespace Global
         public InputControlSystem InputControlSystem { private set; get; } = null;
         public QuestSystem QuestSystem { private set; get; } = null;
         public DelayedDialogSystem DelayedDialogSystem { private set; get; } = null;
+        public WarehouseSystem WarehouseSystem { private set; get; } = null;
         
         public DBQuest DBQuest { private set; get; } = null;
         public DBMask DBMask { private set; get; } = null;
@@ -59,6 +62,8 @@ namespace Global
         public DBDistrict DBDistrict { private set; get; } = null;
         public DBFaction DBFaction { private set; get; } = null;
         public DBMaskCombination DBMaskCombination { private set; get; } = null;
+        public DBInlayVisual DBInlayVisual { private set; get; } = null;
+        public DBWarehouse DBWarehouse { private set; get; } = null;
         public DBCatalogPage DBCatalogPage { private set; get; } = null;
         
         public ItemsFactory ItemsFactory { private set; get; } = null;
@@ -83,6 +88,8 @@ namespace Global
             DBDistrict = dbDistrict;
             DBFaction = dbFaction;
             DBMaskCombination = dbMaskCombination;
+            DBInlayVisual = dbInlayVisual;
+            DBWarehouse = dbWarehouse;
             DBCatalogPage = dbCatalogPage;
             
             ItemsFactory = itemsFactory;
@@ -99,6 +106,7 @@ namespace Global
             InputControlSystem = GetComponent<InputControlSystem>();
             QuestSystem = GetComponent<QuestSystem>();
             DelayedDialogSystem = GetComponent<DelayedDialogSystem>();
+            WarehouseSystem = GetComponent<WarehouseSystem>();
 
             Instance = this;
 

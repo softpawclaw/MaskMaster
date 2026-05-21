@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Enums;
+using Helpers;
 using UnityEngine;
 
 namespace Items
@@ -11,6 +13,10 @@ namespace Items
         [Header("Tray")]
         [SerializeField] private int selectedIndex = 0;
 
+        [Header("Warehouse Auto Mode")]
+        [SerializeField] private bool useWarehouseAutoMode = false;
+        [SerializeField] private int blankSlotIndex = 0;
+
         [Header("Hand View")]
         [SerializeField] private List<Transform> itemSockets = new();
         [SerializeField] private List<GameObject> selectionVisuals = new();
@@ -20,6 +26,7 @@ namespace Items
         private bool takenToHand = false;
         
         public int SelectedIndex => selectedIndex;
+        public bool UseWarehouseAutoMode => useWarehouseAutoMode;
 
         public override bool CanAccept(ItemBase item)
         {
@@ -80,6 +87,75 @@ namespace Items
             if (freeIndex < 0) return false;
 
             slotItems[freeIndex] = resource;
+            SyncItemsListFromSlots();
+            RefreshHandView();
+            return true;
+        }
+
+
+        /// <summary>
+        /// Альтернативная складская логика без ручного выбора слота:
+        /// - повторный клик по ящику того же ResourceType возвращает ресурс обратно и удаляет его с подноса;
+        /// - blank занимает только blankSlotIndex и не заменяется автоматически другим blank;
+        /// - inlay занимает любой свободный слот, кроме blankSlotIndex;
+        /// - старый ручной TryExchangeSelectedResource не трогаем.
+        /// </summary>
+        public bool TryToggleWarehouseResource(ResourceType type, Func<ResourceType, ResourceItem> createResource, out string message)
+        {
+            message = string.Empty;
+
+            if (!useWarehouseAutoMode)
+            {
+                message = "TrayItem: warehouse auto mode is disabled.";
+                return false;
+            }
+
+            if (type == ResourceType.None)
+            {
+                message = "TrayItem: refused to toggle ResourceType.None.";
+                return false;
+            }
+
+            int existingIndex = FindSlotByResourceType(type);
+            if (existingIndex >= 0)
+            {
+                var removed = slotItems[existingIndex];
+                slotItems[existingIndex] = null;
+                SyncItemsListFromSlots();
+                RefreshHandView();
+
+                if (removed != null)
+                    Destroy(removed.gameObject);
+
+                return true;
+            }
+
+            int targetSlot = FindAutoTargetSlot(type);
+            if (targetSlot < 0)
+            {
+                message = ResourceTypeHelper.IsBlank(type)
+                    ? $"TrayItem: blank slot is occupied. Return current blank before taking '{type}'."
+                    : $"TrayItem: no free inlay slot for '{type}'. Return one inlay before taking a new one.";
+                return false;
+            }
+
+            if (createResource == null)
+            {
+                message = $"TrayItem: createResource callback is null for '{type}'.";
+                return false;
+            }
+
+            var resource = createResource.Invoke(type);
+            if (resource == null)
+            {
+                message = $"TrayItem: failed to create resource '{type}'.";
+                return false;
+            }
+
+            if (resource.Type != type)
+                Debug.LogWarning($"TrayItem: created resource type mismatch. Expected '{type}', got '{resource.Type}'.");
+
+            slotItems[targetSlot] = resource;
             SyncItemsListFromSlots();
             RefreshHandView();
             return true;
@@ -223,6 +299,12 @@ namespace Items
                     item.transform.localPosition = Vector3.zero;
                     item.transform.localRotation = Quaternion.identity;
                 }
+
+                // Важный момент для ресурсов, созданных складом напрямую:
+                // они не проходят через обычный hand/container flow, поэтому должны
+                // получить тот же render layer, что и сам поднос. Иначе предмет
+                // физически лежит в слоте, но не виден hand camera.
+                item.SetRenderLayerRecursive(gameObject.layer);
             }
         }
 
@@ -277,6 +359,48 @@ namespace Items
         private bool IsValidIndex(int index)
         {
             return index >= 0 && index < SlotCount;
+        }
+
+
+        private int FindSlotByResourceType(ResourceType type)
+        {
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (slotItems[i] != null && slotItems[i].Type == type)
+                    return i;
+            }
+
+            return -1;
+        }
+
+        private int FindAutoTargetSlot(ResourceType type)
+        {
+            if (ResourceTypeHelper.IsBlank(type))
+            {
+                if (!IsValidIndex(blankSlotIndex))
+                {
+                    Debug.LogError($"TrayItem: blankSlotIndex '{blankSlotIndex}' is invalid. Expected 0..{SlotCount - 1}.");
+                    return -1;
+                }
+
+                return slotItems[blankSlotIndex] == null ? blankSlotIndex : -1;
+            }
+
+            if (!ResourceTypeHelper.IsInlay(type))
+            {
+                Debug.LogWarning($"TrayItem: resource '{type}' is neither blank nor inlay by ResourceTypeHelper rules. Treating it as inlay.");
+            }
+
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (i == blankSlotIndex)
+                    continue;
+
+                if (slotItems[i] == null)
+                    return i;
+            }
+
+            return -1;
         }
 
         private void ClearSlots()
