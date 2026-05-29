@@ -14,6 +14,9 @@ namespace Interactable
         private Quaternion openRot;
         private bool isMoving;
 
+        public bool IsOpen => isOpen;
+        public bool IsMoving => isMoving;
+
         private void Awake()
         {
             if (doorPivot == null)

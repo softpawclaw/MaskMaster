@@ -691,34 +691,34 @@ namespace Interactable.Workbench
 
             MainRecipeItem recipe = mainRecipeSlot != null ? mainRecipeSlot.Detach() : null;
 
+            // Каталог можно смотреть без главного рецепта, но выносить каталожные листы нельзя.
+            // Если рецепта нет, возвращаем выбранные страницы обратно в их ящики и ничего не выдаём в руки.
+            if (recipe == null)
+            {
+                ReturnAllSelectedPagesToSourceDrawers();
+                RefreshStackViews();
+                return;
+            }
+
             List<ItemBase> selectedItems = null;
             if (selectedPagesStack != null)
             {
                 selectedItems = selectedPagesStack.ExtractAllItems();
             }
 
-            bool hasRecipe = recipe != null;
-            bool hasSelectedItems = selectedItems != null && selectedItems.Count > 0;
-
-            if (!hasRecipe && !hasSelectedItems)
-                return;
-
             PaperStackItem outputStack = itemsFactory.CreatePaperStack();
             bool addedAnything = false;
 
-            if (recipe != null)
-            {
-                recipe.gameObject.SetActive(true);
+            recipe.gameObject.SetActive(true);
 
-                if (outputStack.TryAddPage(recipe))
-                {
-                    addedAnything = true;
-                }
-                else
-                {
-                    Debug.LogWarning("CatalogWorkbench: failed to add main recipe to output paper stack.");
-                    Object.Destroy(recipe.gameObject);
-                }
+            if (outputStack.TryAddPage(recipe))
+            {
+                addedAnything = true;
+            }
+            else
+            {
+                Debug.LogWarning("CatalogWorkbench: failed to add main recipe to output paper stack.");
+                Object.Destroy(recipe.gameObject);
             }
 
             if (selectedItems != null)
