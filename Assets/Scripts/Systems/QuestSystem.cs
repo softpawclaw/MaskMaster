@@ -34,6 +34,10 @@ namespace Systems
                     break;
 
                 case QuestState.Request:
+                    CurrentState = QuestState.MaskAwait;
+                    break;
+
+                case QuestState.MaskAwait:
                     CurrentState = QuestState.Success;
                     break;
             }

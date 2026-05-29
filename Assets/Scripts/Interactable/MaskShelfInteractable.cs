@@ -14,10 +14,14 @@ namespace Interactable
         [Header("Shelf Sockets")]
         [SerializeField] private List<Transform> maskSockets = new();
 
+        [Header("Dialogues")]
+        [SerializeField] private string[] takeBlockedDialogIds;
+
         private readonly List<MaskItem> storedMasks = new();
 
         private QuestSystem questSystem;
         private DelayedDialogSystem delayedDialogSystem;
+        private UISystem uiSystem;
 
         public event Action<MaskItem> OnMaskStored;
         public event Action<MaskItem> OnMaskTaken;
@@ -29,6 +33,7 @@ namespace Interactable
         {
             questSystem = Linker.Instance.QuestSystem;
             delayedDialogSystem = Linker.Instance.DelayedDialogSystem;
+            uiSystem = Linker.Instance.UISystem;
 
             ValidateConfig();
         }
@@ -97,6 +102,12 @@ namespace Interactable
                 return;
             }
 
+            if (!CanTakeMaskFromShelf())
+            {
+                PlayTakeBlockedDialogueOrComplete(interactor);
+                return;
+            }
+
             var lastIndex = storedMasks.Count - 1;
             var mask = storedMasks[lastIndex];
 
@@ -121,6 +132,43 @@ namespace Interactable
             Debug.Log($"MaskShelfInteractable: took mask {mask.ItemId}. {storedMasks.Count}/{maskSockets.Count}");
 
             CompleteInteraction(interactor);
+        }
+
+        private bool CanTakeMaskFromShelf()
+        {
+            return questSystem != null && questSystem.CurrentState == QuestState.MaskAwait;
+        }
+
+        private void PlayTakeBlockedDialogueOrComplete(GameObject interactor)
+        {
+            var dialogueId = GetRandomDialogueId(takeBlockedDialogIds);
+
+            if (string.IsNullOrWhiteSpace(dialogueId))
+            {
+                Debug.LogWarning("MaskShelfInteractable: takeBlockedDialogIds is empty.");
+                CompleteInteraction(interactor);
+                return;
+            }
+
+            if (uiSystem == null)
+            {
+                Debug.LogWarning("MaskShelfInteractable: UISystem is not linked.");
+                CompleteInteraction(interactor);
+                return;
+            }
+
+            uiSystem.Execute(dialogueId, () => CompleteInteraction(interactor));
+        }
+
+        private string GetRandomDialogueId(string[] dialogueIds)
+        {
+            if (dialogueIds == null || dialogueIds.Length == 0)
+                return null;
+
+            if (dialogueIds.Length == 1)
+                return dialogueIds[0];
+
+            return dialogueIds[UnityEngine.Random.Range(0, dialogueIds.Length)];
         }
 
         private void PlaceMask(MaskItem mask)

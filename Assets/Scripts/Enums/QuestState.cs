@@ -6,6 +6,7 @@
         , Start
         , Await
         , Request
+        , MaskAwait
         , Success
         , Failure
     }

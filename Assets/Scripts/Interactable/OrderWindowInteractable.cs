@@ -14,8 +14,8 @@ namespace Interactable
         public event Action OnNextDialog;
 
         [Header("Fallback Dialogues")]
-        [SerializeField] private string noOneAtWindowDialogId;
-        [SerializeField] private string requestWaitingDialogId;
+        [SerializeField] private string[] noOneAtWindowDialogIds;
+        [SerializeField] private string[] requestWaitingDialogIds;
 
         private DBMask.MaskData currentMask;
 
@@ -86,14 +86,11 @@ namespace Interactable
                     break;
 
                 case QuestState.Request:
-                    if (requestPromptShown)
-                    {
-                        TryCompleteRequestFlow(interactor);
-                    }
-                    else
-                    {
-                        OnNextDialog?.Invoke();
-                    }
+                    OnNextDialog?.Invoke();
+                    break;
+
+                case QuestState.MaskAwait:
+                    TryCompleteRequestFlow(interactor);
                     break;
 
                 case QuestState.Success:
@@ -171,6 +168,7 @@ namespace Interactable
         private void FinishRequestPromptFlow()
         {
             requestPromptShown = true;
+            questSystem.ChangeQuestState();
             CompleteInteraction(playerHandsController.gameObject);
         }
 
@@ -220,16 +218,18 @@ namespace Interactable
 
         private void PlayNoOneAtWindow(GameObject interactor)
         {
-            PlaySingleDialogueOrComplete(noOneAtWindowDialogId, interactor, "noOneAtWindowDialogId");
+            PlayRandomDialogueOrComplete(noOneAtWindowDialogIds, interactor, "noOneAtWindowDialogIds");
         }
 
         private void PlayRequestWaiting(GameObject interactor)
         {
-            PlaySingleDialogueOrComplete(requestWaitingDialogId, interactor, "requestWaitingDialogId");
+            PlayRandomDialogueOrComplete(requestWaitingDialogIds, interactor, "requestWaitingDialogIds");
         }
 
-        private void PlaySingleDialogueOrComplete(string dialogueId, GameObject interactor, string fieldName)
+        private void PlayRandomDialogueOrComplete(string[] dialogueIds, GameObject interactor, string fieldName)
         {
+            var dialogueId = GetRandomDialogueId(dialogueIds);
+
             if (string.IsNullOrWhiteSpace(dialogueId))
             {
                 Debug.LogWarning($"OrderWindowInteractable: {fieldName} is empty.");
@@ -245,6 +245,17 @@ namespace Interactable
             }
 
             uiSystem.Execute(dialogueId, () => CompleteInteraction(interactor));
+        }
+
+        private string GetRandomDialogueId(string[] dialogueIds)
+        {
+            if (dialogueIds == null || dialogueIds.Length == 0)
+                return null;
+
+            if (dialogueIds.Length == 1)
+                return dialogueIds[0];
+
+            return dialogueIds[UnityEngine.Random.Range(0, dialogueIds.Length)];
         }
 
         private MaskItem TryGetMaskFromHands()
