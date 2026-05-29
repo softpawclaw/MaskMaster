@@ -6,7 +6,6 @@ namespace Interactable.MaskWorkbench
 {
     public class MaskWorkpieceSocketView : MonoBehaviour
     {
-        [SerializeField] private MaskSocket socket = MaskSocket.None;
         [SerializeField] private Transform selectionAnchor;
         [SerializeField] private Transform inlayRoot;
         [SerializeField] private GameObject emptyVisual;
@@ -18,7 +17,6 @@ namespace Interactable.MaskWorkbench
         private DBInlayVisual.InlayVisualData plannedVisualData;
         private bool isSolid;
 
-        public MaskSocket Socket => socket;
         public Transform SelectionAnchor => selectionAnchor != null ? selectionAnchor : transform;
         public Transform InlayRoot => inlayRoot != null ? inlayRoot : transform;
         public ResourceType PlannedResourceType => plannedResourceType;

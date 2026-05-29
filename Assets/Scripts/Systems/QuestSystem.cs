@@ -1,4 +1,4 @@
-﻿using DB;
+using DB;
 using Enums;
 using Global;
 using UnityEngine;
@@ -38,11 +38,16 @@ namespace Systems
                     break;
 
                 case QuestState.MaskAwait:
-                    CurrentState = QuestState.Success;
                     break;
             }
 
             Debug.Log($"QuestState changed. quest: {currentQuest.Id}, order: {currentQuest.OR_Id}, state: {CurrentState}");
+        }
+
+        public void SetQuestState(QuestState state)
+        {
+            CurrentState = state;
+            Debug.Log($"QuestState set. quest: {currentQuest.Id}, order: {currentQuest.OR_Id}, state: {CurrentState}");
         }
 
         public string[] GetDialogs()

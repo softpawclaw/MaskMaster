@@ -1,5 +1,6 @@
 using System;
 using Enums;
+using Interactable.MaskWorkbench;
 using UnityEngine;
 
 namespace DB
@@ -14,6 +15,7 @@ namespace DB
             public string ProductionName;
             public Sprite Image;
             public MaskSize MaskSize;
+            public MaskSegment[] Segments;
         }
 
         [SerializeField] private FaceCoverData[] config;
@@ -45,6 +47,42 @@ namespace DB
 
             value = data.RecipeName;
             return true;
+        }
+
+        public MaskSegment[] ResolveSegments(string id)
+        {
+            if (TryGetData(id, out var data))
+            {
+                return ResolveSegments(data);
+            }
+
+            return System.Array.Empty<MaskSegment>();
+        }
+
+        public static MaskSegment[] ResolveSegments(FaceCoverData data)
+        {
+            if (data.Segments != null && data.Segments.Length > 0)
+                return (MaskSegment[])data.Segments.Clone();
+
+            return ResolveSegmentsFromSize(data.MaskSize);
+        }
+
+        public static MaskSegment[] ResolveSegmentsFromSize(MaskSize size)
+        {
+            switch (size)
+            {
+                case MaskSize.Small:
+                    return new[] { MaskSegment.Middle };
+
+                case MaskSize.Medium:
+                    return new[] { MaskSegment.Upper, MaskSegment.Middle };
+
+                case MaskSize.Large:
+                    return new[] { MaskSegment.Upper, MaskSegment.Middle, MaskSegment.Lower };
+
+                default:
+                    return System.Array.Empty<MaskSegment>();
+            }
         }
 
         public FaceCoverData[] GetAll()

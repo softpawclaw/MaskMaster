@@ -52,6 +52,7 @@ namespace Global
         public QuestSystem QuestSystem { private set; get; } = null;
         public DelayedDialogSystem DelayedDialogSystem { private set; get; } = null;
         public WarehouseSystem WarehouseSystem { private set; get; } = null;
+        public MaskEvaluationSystem MaskEvaluationSystem { private set; get; } = null;
         
         public DBQuest DBQuest { private set; get; } = null;
         public DBMask DBMask { private set; get; } = null;
@@ -107,6 +108,7 @@ namespace Global
             QuestSystem = GetComponent<QuestSystem>();
             DelayedDialogSystem = GetComponent<DelayedDialogSystem>();
             WarehouseSystem = GetComponent<WarehouseSystem>();
+            MaskEvaluationSystem = GetComponent<MaskEvaluationSystem>();
 
             Instance = this;
 
@@ -121,6 +123,7 @@ namespace Global
             InputControlSystem.Link();
             QuestSystem.Link();
             DelayedDialogSystem.Link();
+            MaskEvaluationSystem?.Link();
         }
     }
 }

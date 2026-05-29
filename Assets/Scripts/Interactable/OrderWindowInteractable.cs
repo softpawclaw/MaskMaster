@@ -25,6 +25,7 @@ namespace Interactable
         private OrdersSystem ordersSystem = null;
         private ItemsFactory itemsFactory = null;
         private DelayedDialogSystem delayedDialogSystem = null;
+        private MaskEvaluationSystem maskEvaluationSystem = null;
 
         private int currentDialog = 0;
         private bool requestPromptShown = false;
@@ -38,6 +39,7 @@ namespace Interactable
             playerHandsController = Linker.Instance.PlayerHandsController;
             itemsFactory = Linker.Instance.ItemsFactory;
             delayedDialogSystem = Linker.Instance.DelayedDialogSystem;
+            maskEvaluationSystem = Linker.Instance.MaskEvaluationSystem;
 
             ordersSystem.OnOrderChosen += OnOrderChosenSignature;
             OnNextDialog += OnNextDialogSignature;
@@ -94,6 +96,7 @@ namespace Interactable
                     break;
 
                 case QuestState.Success:
+                case QuestState.Failure:
                     OnNextDialog?.Invoke();
                     break;
 
@@ -137,7 +140,8 @@ namespace Interactable
                     break;
 
                 case QuestState.Success:
-                    FinishSuccessFlow();
+                case QuestState.Failure:
+                    FinishFinalOrderFlow();
                     break;
 
                 default:
@@ -185,15 +189,27 @@ namespace Interactable
             // Важно: окно принимает любую готовую маску.
             // Соответствие заказу оценивается после сдачи, не на этапе передачи предмета.
             playerHandsController.FreeItem(mask);
+
+            QuestState resultState = QuestState.Success;
+            if (maskEvaluationSystem != null)
+            {
+                var result = maskEvaluationSystem.Evaluate(mask);
+                resultState = result.IsSuccess ? QuestState.Success : QuestState.Failure;
+            }
+            else
+            {
+                Debug.LogWarning("OrderWindowInteractable: MaskEvaluationSystem is not linked. Falling back to Success.");
+            }
+
             Destroy(mask.gameObject);
 
-            questSystem.ChangeQuestState();
+            questSystem.SetQuestState(resultState);
 
             currentDialog = 0;
             OnNextDialog?.Invoke();
         }
 
-        private void FinishSuccessFlow()
+        private void FinishFinalOrderFlow()
         {
             if (currentOrderFinalized)
             {

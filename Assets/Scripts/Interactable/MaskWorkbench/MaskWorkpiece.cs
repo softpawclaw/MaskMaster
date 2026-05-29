@@ -16,8 +16,8 @@ namespace Interactable.MaskWorkbench
         public struct PlannedInlay
         {
             public MaskSegment Segment;
-            public MaskSocket Socket;
             public ResourceType ResourceType;
+            public MaskWorkpieceSocketView SocketView;
         }
 
         private class SegmentRuntime
@@ -257,16 +257,6 @@ namespace Interactable.MaskWorkbench
             RefreshVisuals();
         }
 
-        public MaskSocket GetSelectedSocket()
-        {
-            IReadOnlyList<MaskWorkpieceSocketView> sockets = GetActiveSocketViewsForSegment(selectedSegment);
-            if (sockets.Count == 0)
-                return MaskSocket.None;
-
-            selectedSocketIndex = Mathf.Clamp(selectedSocketIndex, 0, sockets.Count - 1);
-            return sockets[selectedSocketIndex] != null ? sockets[selectedSocketIndex].Socket : MaskSocket.None;
-        }
-
         public bool IsSocketCurrentlySelected(MaskWorkpieceSocketView socketView)
         {
             return socketView != null && ReferenceEquals(GetSelectedSocketView(), socketView);
@@ -280,11 +270,10 @@ namespace Interactable.MaskWorkbench
             if (socketView.HasPlannedInlay)
                 return true;
 
-            // Legacy fallback: старый MaskWorkpiece всё ещё хранит planned по enum-сокету.
             for (int i = 0; i < plannedInlays.Count; i++)
             {
                 PlannedInlay planned = plannedInlays[i];
-                if (planned.Segment == selectedSegment && planned.Socket == socketView.Socket && planned.ResourceType != ResourceType.None)
+                if (ReferenceEquals(planned.SocketView, socketView) && planned.ResourceType != ResourceType.None)
                     return true;
             }
 
@@ -296,32 +285,33 @@ namespace Interactable.MaskWorkbench
             if (!ResourceTypeHelper.IsInlay(resourceType))
                 return false;
 
-            MaskSocket socket = GetSelectedSocket();
-            if (socket == MaskSocket.None)
+            MaskWorkpieceSocketView socketView = GetSelectedSocketView();
+            if (socketView == null)
                 return false;
 
             for (int i = 0; i < plannedInlays.Count; i++)
             {
                 PlannedInlay planned = plannedInlays[i];
-                if (planned.Segment != selectedSegment || planned.Socket != socket)
+                if (!ReferenceEquals(planned.SocketView, socketView))
                     continue;
 
+                planned.Segment = selectedSegment;
                 planned.ResourceType = resourceType;
                 plannedInlays[i] = planned;
                 RefreshVisuals();
-                Debug.Log($"{name}: updated planned inlay {resourceType} at {selectedSegment}/{socket}.");
+                Debug.Log($"{name}: updated planned inlay {resourceType} at {selectedSegment}.");
                 return true;
             }
 
             plannedInlays.Add(new PlannedInlay
             {
                 Segment = selectedSegment,
-                Socket = socket,
-                ResourceType = resourceType
+                ResourceType = resourceType,
+                SocketView = socketView
             });
 
             RefreshVisuals();
-            Debug.Log($"{name}: planned inlay {resourceType} at {selectedSegment}/{socket}.");
+            Debug.Log($"{name}: planned inlay {resourceType} at {selectedSegment}.");
             return true;
         }
 

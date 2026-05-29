@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using DB;
 using Enums;
 using Global;
+using Interactable.MaskWorkbench;
 using TMPro;
 using UnityEngine;
 
@@ -41,8 +42,9 @@ namespace Items
         public string DistrictId => maskData.DistrictId;
         public string FactionId => maskData.FactionId;
         public MaskSize MaskSize => ResolveMaskSize();
+        public MaskSegment[] ExpectedSegments => ResolveExpectedSegments();
         public ResourceType Material => GetBlankResourceType();
-        public DBMaskCombination.MaskSocketResource[] Sockets => GetExpectedSockets();
+        public DBMaskCombination.MaskSegmentResource[] Inlays => GetExpectedInlays();
 
         public void Init(DBMask.MaskData data)
         {
@@ -117,15 +119,61 @@ namespace Items
             return MaskSize.None;
         }
 
-        public DBMaskCombination.MaskSocketResource[] GetExpectedSockets()
+        public MaskSegment[] ResolveExpectedSegments()
+        {
+            var linker = Linker.Instance;
+            if (linker != null && linker.DBFaceCover != null && linker.DBFaceCover.TryGetData(maskData.FaceCoverId, out var faceCoverData))
+            {
+                return DBFaceCover.ResolveSegments(faceCoverData);
+            }
+
+            return DBFaceCover.ResolveSegmentsFromSize(MaskSize);
+        }
+
+        public DBMaskCombination.MaskSegmentResource[] GetExpectedInlays()
         {
             var linker = Linker.Instance;
             if (linker != null && linker.DBMaskCombination != null && linker.DBMaskCombination.TryGetCombination(maskData.DistrictId, maskData.FactionId, out var combination))
             {
-                return combination.Sockets;
+                return FilterExpectedInlaysBySegments(combination.Resources, ExpectedSegments);
             }
 
             return null;
+        }
+
+        private static DBMaskCombination.MaskSegmentResource[] FilterExpectedInlaysBySegments(DBMaskCombination.MaskSegmentResource[] source, MaskSegment[] allowedSegments)
+        {
+            if (source == null || source.Length == 0)
+                return source;
+
+            List<DBMaskCombination.MaskSegmentResource> result = new List<DBMaskCombination.MaskSegmentResource>();
+
+            for (int i = 0; i < source.Length; i++)
+            {
+                if (source[i].ResourceType == ResourceType.None)
+                    continue;
+
+                if (!ContainsSegment(allowedSegments, source[i].Segment))
+                    continue;
+
+                result.Add(source[i]);
+            }
+
+            return result.ToArray();
+        }
+
+        private static bool ContainsSegment(MaskSegment[] segments, MaskSegment segment)
+        {
+            if (segments == null)
+                return false;
+
+            for (int i = 0; i < segments.Length; i++)
+            {
+                if (segments[i] == segment)
+                    return true;
+            }
+
+            return false;
         }
 
         public List<ResourceType> GetAllRequiredResourceTypes()
@@ -138,14 +186,14 @@ namespace Items
                 result.Add(material);
             }
 
-            var sockets = GetExpectedSockets();
-            if (sockets != null)
+            var inlays = GetExpectedInlays();
+            if (inlays != null)
             {
-                for (int i = 0; i < sockets.Length; i++)
+                for (int i = 0; i < inlays.Length; i++)
                 {
-                    if (sockets[i].ResourceType != ResourceType.None)
+                    if (inlays[i].ResourceType != ResourceType.None)
                     {
-                        result.Add(sockets[i].ResourceType);
+                        result.Add(inlays[i].ResourceType);
                     }
                 }
             }

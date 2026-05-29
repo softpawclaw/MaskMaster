@@ -1,5 +1,6 @@
 using System;
 using Enums;
+using Interactable.MaskWorkbench;
 using UnityEngine;
 
 namespace DB
@@ -7,14 +8,14 @@ namespace DB
     public class DBMaskCombination : MonoBehaviour
     {
         [Serializable]
-        public struct MaskSocketResource
+        public struct MaskSegmentResource
         {
-            public MaskSocket Socket;
+            public MaskSegment Segment;
             public ResourceType ResourceType;
 
-            public MaskSocketResource(MaskSocket socket, ResourceType resourceType)
+            public MaskSegmentResource(MaskSegment segment, ResourceType resourceType)
             {
-                Socket = socket;
+                Segment = segment;
                 ResourceType = resourceType;
             }
         }
@@ -23,7 +24,7 @@ namespace DB
         public struct CombinationData
         {
             public string Id;
-            public MaskSocketResource[] Sockets;
+            public MaskSegmentResource[] Resources;
         }
 
         [SerializeField] private CombinationData[] config;

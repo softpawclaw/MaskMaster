@@ -18,7 +18,6 @@ namespace Items
         public struct PlannedInlay
         {
             public MaskSegment Segment;
-            public MaskSocket Socket;
             public ResourceType ResourceType;
             public MaskWorkpieceSocketView SocketView;
         }
@@ -27,13 +26,11 @@ namespace Items
         public struct CraftInlayData
         {
             public MaskSegment Segment;
-            public MaskSocket Socket;
             public ResourceType ResourceType;
 
-            public CraftInlayData(MaskSegment segment, MaskSocket socket, ResourceType resourceType)
+            public CraftInlayData(MaskSegment segment, ResourceType resourceType)
             {
                 Segment = segment;
-                Socket = socket;
                 ResourceType = resourceType;
             }
         }
@@ -219,8 +216,8 @@ namespace Items
             expectedCraftData.BlankResourceType = recipe.Material;
             expectedCraftData.Size = recipe.MaskSize;
 
-            FillDefaultExpectedShapes(expectedCraftData, expectedCraftData.Size);
-            FillExpectedInlays(expectedCraftData, recipe.Sockets);
+            FillExpectedShapes(expectedCraftData, recipe.ExpectedSegments);
+            FillExpectedInlays(expectedCraftData, recipe.Inlays);
 
             LogCraftBlock("EXPECTED DATA FILLED", expectedCraftData);
         }
@@ -459,12 +456,6 @@ namespace Items
             return socketView != null ? socketView.SelectionAnchor : GetSelectedSelectionAnchor();
         }
 
-        public MaskSocket GetSelectedSocket()
-        {
-            MaskWorkpieceSocketView socketView = GetSelectedSocketView();
-            return socketView != null ? socketView.Socket : MaskSocket.None;
-        }
-
         public bool IsSocketCurrentlySelected(MaskWorkpieceSocketView socketView)
         {
             return socketView != null && ReferenceEquals(GetSelectedSocketView(), socketView);
@@ -505,7 +496,7 @@ namespace Items
                 return false;
 
             MaskWorkpieceSocketView socketView = GetSelectedSocketView();
-            if (socketView == null || socketView.Socket == MaskSocket.None)
+            if (socketView == null)
                 return false;
 
             socketView.SetPlannedInlay(resourceType, visualData);
@@ -519,20 +510,19 @@ namespace Items
                 planned.ResourceType = resourceType;
                 plannedInlays[i] = planned;
                 RefreshCraftVisual(MaskWorkbenchState.InlaySelection);
-                Debug.Log($"{name}: updated planned inlay {resourceType} at {selectedSegment}/{socketView.Socket}.");
+                Debug.Log($"{name}: updated planned inlay {resourceType} at {selectedSegment}.");
                 return true;
             }
 
             plannedInlays.Add(new PlannedInlay
             {
                 Segment = selectedSegment,
-                Socket = socketView.Socket,
                 ResourceType = resourceType,
                 SocketView = socketView
             });
 
             RefreshCraftVisual(MaskWorkbenchState.InlaySelection);
-            Debug.Log($"{name}: planned inlay {resourceType} at {selectedSegment}/{socketView.Socket}.");
+            Debug.Log($"{name}: planned inlay {resourceType} at {selectedSegment}.");
             return true;
         }
 
@@ -552,7 +542,7 @@ namespace Items
             }
 
             RefreshCraftVisual(MaskWorkbenchState.InlaySelection);
-            Debug.Log($"{name}: cleared planned inlay at {selectedSegment}/{socketView.Socket}.");
+            Debug.Log($"{name}: cleared planned inlay at {selectedSegment}.");
             return true;
         }
 
@@ -572,7 +562,6 @@ namespace Items
                 }
 
                 planned.Segment = FindSegmentForSocketView(socketView, planned.Segment);
-                planned.Socket = socketView.Socket;
                 planned.ResourceType = socketView.PlannedResourceType;
                 plannedInlays[i] = planned;
 
@@ -596,14 +585,13 @@ namespace Items
             for (int i = 0; i < group.Count; i++)
             {
                 PlannedInlay planned = group[i];
-                MaskWorkpieceSocketView socketView = planned.SocketView != null
-                    ? planned.SocketView
-                    : FindSocketView(planned.Segment, planned.Socket);
+                MaskWorkpieceSocketView socketView = planned.SocketView;
                 if (socketView == null)
                     continue;
 
                 socketView.SolidifyPlannedInlay();
-                RecordActualInlay(planned.Segment, socketView.Socket, resourceType);
+                MaskSegment actualSegment = FindSegmentForSocketView(socketView, planned.Segment);
+                RecordActualInlay(actualSegment, resourceType);
             }
 
             Debug.Log($"{name}: installed inlay group {resourceType}, count={group.Count}.");
@@ -630,32 +618,53 @@ namespace Items
             target.FactionId = data.FactionId;
         }
 
-        private void FillExpectedInlays(CraftResultData target, DBMaskCombination.MaskSocketResource[] sockets)
+        private void FillExpectedInlays(CraftResultData target, DBMaskCombination.MaskSegmentResource[] inlays)
         {
             target.Inlays.Clear();
-            if (sockets == null)
+            if (inlays == null)
                 return;
 
-            for (int i = 0; i < sockets.Length; i++)
+            for (int i = 0; i < inlays.Length; i++)
             {
-                if (sockets[i].ResourceType == ResourceType.None)
+                if (inlays[i].ResourceType == ResourceType.None)
                     continue;
 
-                target.Inlays.Add(new CraftInlayData(MaskSegment.Middle, sockets[i].Socket, sockets[i].ResourceType));
+                if (!ContainsExpectedShape(target, inlays[i].Segment))
+                    continue;
+
+                target.Inlays.Add(new CraftInlayData(inlays[i].Segment, inlays[i].ResourceType));
             }
         }
 
-        private void FillDefaultExpectedShapes(CraftResultData target, MaskSize size)
+        private void FillExpectedShapes(CraftResultData target, MaskSegment[] segments)
         {
             target.Shapes.Clear();
 
-            bool upper = size == MaskSize.Large || size == MaskSize.Medium;
-            bool middle = size != MaskSize.None;
-            bool lower = size == MaskSize.Large;
+            if (segments == null)
+                return;
 
-            if (upper) target.Shapes.Add(new CraftShapeData(MaskSegment.Upper, 0));
-            if (middle) target.Shapes.Add(new CraftShapeData(MaskSegment.Middle, 0));
-            if (lower) target.Shapes.Add(new CraftShapeData(MaskSegment.Lower, 0));
+            for (int i = 0; i < segments.Length; i++)
+            {
+                MaskSegment segment = segments[i];
+                if (ContainsExpectedShape(target, segment))
+                    continue;
+
+                target.Shapes.Add(new CraftShapeData(segment, 0));
+            }
+        }
+
+        private static bool ContainsExpectedShape(CraftResultData target, MaskSegment segment)
+        {
+            if (target == null || target.Shapes == null)
+                return false;
+
+            for (int i = 0; i < target.Shapes.Count; i++)
+            {
+                if (target.Shapes[i].Segment == segment)
+                    return true;
+            }
+
+            return false;
         }
 
         private void RefreshActualShapesSnapshot()
@@ -671,22 +680,12 @@ namespace Items
             }
         }
 
-        private void RecordActualInlay(MaskSegment segment, MaskSocket socket, ResourceType resourceType)
+        private void RecordActualInlay(MaskSegment segment, ResourceType resourceType)
         {
-            if (resourceType == ResourceType.None || socket == MaskSocket.None)
+            if (resourceType == ResourceType.None)
                 return;
 
-            for (int i = 0; i < actualCraftData.Inlays.Count; i++)
-            {
-                CraftInlayData existing = actualCraftData.Inlays[i];
-                if (existing.Segment != segment || existing.Socket != socket)
-                    continue;
-
-                actualCraftData.Inlays[i] = new CraftInlayData(segment, socket, resourceType);
-                return;
-            }
-
-            actualCraftData.Inlays.Add(new CraftInlayData(segment, socket, resourceType));
+            actualCraftData.Inlays.Add(new CraftInlayData(segment, resourceType));
         }
 
         private void LogCraftBlock(string title, CraftResultData data)
@@ -734,7 +733,7 @@ namespace Items
             for (int i = 0; i < inlays.Count; i++)
             {
                 if (i > 0) builder.Append(", ");
-                builder.Append(inlays[i].Segment).Append('/').Append(inlays[i].Socket).Append('=').Append(inlays[i].ResourceType);
+                builder.Append(inlays[i].Segment).Append('=').Append(inlays[i].ResourceType);
             }
             return builder.ToString();
         }
@@ -842,17 +841,7 @@ namespace Items
             return variant.Sockets;
         }
 
-        private MaskWorkpieceSocketView FindSocketView(MaskSegment segment, MaskSocket socket)
-        {
-            IReadOnlyList<MaskWorkpieceSocketView> sockets = GetActiveSocketViewsForSegment(segment);
-            for (int i = 0; i < sockets.Count; i++)
-            {
-                if (sockets[i] != null && sockets[i].Socket == socket)
-                    return sockets[i];
-            }
 
-            return null;
-        }
         private MaskSegment FindSegmentForSocketView(MaskWorkpieceSocketView socketView, MaskSegment fallback)
         {
             if (socketView == null)
