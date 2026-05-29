@@ -13,6 +13,10 @@ namespace Interactable
     {
         public event Action OnNextDialog;
 
+        [Header("Fallback Dialogues")]
+        [SerializeField] private string noOneAtWindowDialogId;
+        [SerializeField] private string requestWaitingDialogId;
+
         private DBMask.MaskData currentMask;
 
         private PlayerHandsController playerHandsController = null;
@@ -63,27 +67,43 @@ namespace Interactable
                 return;
             }
 
-            if (currentOrderFinalized)
-            {
-                CompleteInteraction(interactor);
-                return;
-            }
-
             currentDialog = 0;
 
-            if (questSystem.CurrentState == QuestState.Request && requestPromptShown)
+            if (currentOrderFinalized)
             {
-                TryCompleteRequestFlow(interactor);
+                PlayNoOneAtWindow(interactor);
                 return;
             }
 
-            if (questSystem.CurrentState == QuestState.Success)
+            switch (questSystem.CurrentState)
             {
-                CompleteInteraction(interactor);
-                return;
-            }
+                case QuestState.Start:
+                    OnNextDialog?.Invoke();
+                    break;
 
-            OnNextDialog?.Invoke();
+                case QuestState.Await:
+                    PlayNoOneAtWindow(interactor);
+                    break;
+
+                case QuestState.Request:
+                    if (requestPromptShown)
+                    {
+                        TryCompleteRequestFlow(interactor);
+                    }
+                    else
+                    {
+                        OnNextDialog?.Invoke();
+                    }
+                    break;
+
+                case QuestState.Success:
+                    OnNextDialog?.Invoke();
+                    break;
+
+                default:
+                    PlayNoOneAtWindow(interactor);
+                    break;
+            }
         }
 
         private void OnNextDialogSignature()
@@ -160,18 +180,12 @@ namespace Interactable
 
             if (mask == null)
             {
-                Debug.Log("OrderWindowInteractable: no mask in hands.");
-                CompleteInteraction(interactor);
+                PlayRequestWaiting(interactor);
                 return;
             }
 
-            if (mask.OrderId != questSystem.CurrentOrderId)
-            {
-                Debug.Log($"OrderWindowInteractable: wrong mask. Expected {questSystem.CurrentOrderId}, got {mask.OrderId}");
-                CompleteInteraction(interactor);
-                return;
-            }
-
+            // Важно: окно принимает любую готовую маску.
+            // Соответствие заказу оценивается после сдачи, не на этапе передачи предмета.
             playerHandsController.FreeItem(mask);
             Destroy(mask.gameObject);
 
@@ -185,7 +199,7 @@ namespace Interactable
         {
             if (currentOrderFinalized)
             {
-                CompleteInteraction(playerHandsController.gameObject);
+                PlayNoOneAtWindow(playerHandsController.gameObject);
                 return;
             }
 
@@ -202,6 +216,35 @@ namespace Interactable
             }
 
             CompleteInteraction(playerHandsController.gameObject);
+        }
+
+        private void PlayNoOneAtWindow(GameObject interactor)
+        {
+            PlaySingleDialogueOrComplete(noOneAtWindowDialogId, interactor, "noOneAtWindowDialogId");
+        }
+
+        private void PlayRequestWaiting(GameObject interactor)
+        {
+            PlaySingleDialogueOrComplete(requestWaitingDialogId, interactor, "requestWaitingDialogId");
+        }
+
+        private void PlaySingleDialogueOrComplete(string dialogueId, GameObject interactor, string fieldName)
+        {
+            if (string.IsNullOrWhiteSpace(dialogueId))
+            {
+                Debug.LogWarning($"OrderWindowInteractable: {fieldName} is empty.");
+                CompleteInteraction(interactor);
+                return;
+            }
+
+            if (uiSystem == null)
+            {
+                Debug.LogWarning("OrderWindowInteractable: UISystem is not linked.");
+                CompleteInteraction(interactor);
+                return;
+            }
+
+            uiSystem.Execute(dialogueId, () => CompleteInteraction(interactor));
         }
 
         private MaskItem TryGetMaskFromHands()
