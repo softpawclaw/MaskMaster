@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using DB;
 using Enums;
@@ -88,6 +89,8 @@ namespace Interactable.MaskWorkbench
         private InputAction selectProductionAction;
         private InputAction scrollInlayAction;
         private bool inputSubscribed;
+
+        public event Action<MaskWorkbench> ProductionStarted;
 
         public MaskWorkbenchState State => state;
         public bool HasStarted => session.HasStarted;
@@ -320,6 +323,7 @@ namespace Interactable.MaskWorkbench
             runtimeCraftMask?.BeginCraftDataTracking(session.MainRecipe);
             runtimeCraftMask?.SetSourceBlank(blank.Type);
             session.MarkStarted(blank, runtimeBlankWorkpiece, runtimeCraftMask);
+            ProductionStarted?.Invoke(this);
             DestroyConsumedBlankResource();
 
             RemoveFirstRecipePageOfKind(CatalogPageKind.MistResistance);

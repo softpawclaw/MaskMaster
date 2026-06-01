@@ -10,6 +10,10 @@ namespace Interactable
         [SerializeField] private float rotateSpeed = 180f;
         [SerializeField] private bool isOpen = false;
 
+        [Header("Interaction")]
+        [Tooltip("If enabled, direct interaction from the player is ignored. Scripted interactions from controllers still work.")]
+        [SerializeField] private bool blockPlayerInteraction = false;
+
         private Quaternion closedRot;
         private Quaternion openRot;
         private bool isMoving;
@@ -28,14 +32,33 @@ namespace Interactable
 
         protected override void OnInteract(GameObject interactor)
         {
-            if (isMoving) return;
+            if (blockPlayerInteraction && IsPlayerInteractor(interactor))
+            {
+                CompleteInteraction(interactor);
+                return;
+            }
+
+            if (isMoving)
+            {
+                CompleteInteraction(interactor);
+                return;
+            }
 
             isOpen = !isOpen;
             StopAllCoroutines();
-            StartCoroutine(RotateTo(isOpen ? openRot : closedRot));
+            StartCoroutine(RotateTo(isOpen ? openRot : closedRot, interactor));
         }
 
-        private System.Collections.IEnumerator RotateTo(Quaternion target)
+        private static bool IsPlayerInteractor(GameObject interactor)
+        {
+            if (interactor == null)
+                return false;
+
+            return interactor.GetComponent<PlayerController>() != null
+                   || interactor.GetComponent<Player.PlayerHandsController>() != null;
+        }
+
+        private System.Collections.IEnumerator RotateTo(Quaternion target, GameObject interactor)
         {
             isMoving = true;
 
@@ -51,6 +74,7 @@ namespace Interactable
 
             doorPivot.localRotation = target;
             isMoving = false;
+            CompleteInteraction(interactor);
         }
     }
 }

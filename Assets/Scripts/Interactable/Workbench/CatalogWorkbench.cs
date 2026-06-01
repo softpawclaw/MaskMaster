@@ -272,6 +272,8 @@ namespace Interactable.Workbench
             if (page == null)
                 return;
 
+            ReturnExistingSelectedPageOfSameKind(page.PageKind);
+
             if (!selectedPagesStack.TryAddPageOnTop(page))
             {
                 activeDrawerStack.TryAddPage(page);
@@ -756,6 +758,46 @@ namespace Interactable.Workbench
                 Debug.LogWarning("CatalogWorkbench: failed to return paper stack to player hands.");
                 Object.Destroy(outputStack.gameObject);
             }
+        }
+
+        private void ReturnExistingSelectedPageOfSameKind(Enums.CatalogPageKind pageKind)
+        {
+            if (pageKind == Enums.CatalogPageKind.None || selectedPagesStack == null)
+                return;
+
+            while (true)
+            {
+                CatalogPageItem existingPage = selectedPagesStack.TryRemoveFirst(item =>
+                    item is CatalogPageItem catalogPage && catalogPage.PageKind == pageKind) as CatalogPageItem;
+
+                if (existingPage == null)
+                    return;
+
+                ReturnSelectedPageToSourceDrawer(existingPage);
+            }
+        }
+
+        private void ReturnSelectedPageToSourceDrawer(CatalogPageItem page)
+        {
+            if (page == null)
+                return;
+
+            CatalogDrawer sourceDrawer = FindDrawerById(page.SourceDrawerId);
+            bool returningToActiveDrawer = activeDrawer != null && sourceDrawer == activeDrawer;
+
+            if (returningToActiveDrawer && activeDrawerStack != null)
+            {
+                if (activeDrawerStack.TryAddPage(page))
+                {
+                    sourceDrawer.AddPage(page.PageId);
+                    RefreshAfterMoveLeftToRight();
+                    return;
+                }
+            }
+
+            sourceDrawer?.AddPage(page.PageId);
+            Object.Destroy(page.gameObject);
+            RefreshStackViews();
         }
 
         private CatalogDrawer FindDrawerById(string drawerId)
