@@ -72,6 +72,9 @@ namespace Interactable
                 return;
             }
 
+            if (mode == LeverMode.EnterStorage)
+                storageDoorController.ArmEntryTrigger();
+
             storageDoorController.OpenDoor();
             CompleteInteraction(interactor);
         }
@@ -100,14 +103,18 @@ namespace Interactable
                 return false;
             }
 
-            int catalogPageCount = CountCatalogPages(stack);
-            if (catalogPageCount < 4)
+            bool hasMistResistance = HasCatalogPage(stack, CatalogPageKind.MistResistance, recipe.MistResistanceId);
+            bool hasFaceCover = HasCatalogPage(stack, CatalogPageKind.FaceCover, recipe.FaceCoverId);
+            bool hasDistrict = HasCatalogPage(stack, CatalogPageKind.District, recipe.DistrictId);
+            bool hasFaction = HasCatalogPage(stack, CatalogPageKind.Faction, recipe.FactionId);
+
+            if (!hasMistResistance || !hasFaceCover || !hasDistrict || !hasFaction)
             {
-                message = $"Storage entry denied: incomplete paper stack. Catalog pages={catalogPageCount}/4.";
+                message = $"Storage entry denied: incomplete paper stack. MR={hasMistResistance}, FC={hasFaceCover}, D={hasDistrict}, F={hasFaction}.";
                 return false;
             }
 
-            message = $"Storage entry allowed: paper stack has main recipe and catalog pages={catalogPageCount}/4.";
+            message = "Storage entry allowed: paper stack is complete.";
             return true;
         }
 
@@ -187,20 +194,25 @@ namespace Interactable
             return null;
         }
 
-        private static int CountCatalogPages(PaperStackItem stack)
+        private static bool HasCatalogPage(PaperStackItem stack, CatalogPageKind kind, string expectedPageId)
         {
             if (stack == null)
-                return 0;
+                return false;
 
-            int count = 0;
             var items = stack.Items;
             for (int i = 0; i < items.Count; i++)
             {
-                if (items[i] is CatalogPageItem)
-                    count++;
+                if (items[i] is not CatalogPageItem page)
+                    continue;
+
+                if (page.PageKind != kind)
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(expectedPageId) || page.PageId == expectedPageId)
+                    return true;
             }
 
-            return count;
+            return false;
         }
 
         private static int GetRequiredInlayCount(MainRecipeItem recipe)

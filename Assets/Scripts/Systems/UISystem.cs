@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Global;
 using UI;
 using UnityEngine;
@@ -27,10 +27,12 @@ namespace Systems
         [SerializeField] private DialogueData[] config;
 
         private DaySystem daySystem = null;
+        private DialogueHistorySystem dialogueHistorySystem = null;
         
         public void Link()
         {
             daySystem = Linker.Instance.DaySystem;
+            dialogueHistorySystem = Linker.Instance.DialogueHistorySystem;
         }
 
         private void Awake()
@@ -45,19 +47,25 @@ namespace Systems
 
         public override void Execute(string id, Action completeAction)
         {
-            var prefix = id[..4];
-            
             for (int i = 0; i < config.Length; i++)
             {
                 if (id == config[i].Id)
                 {
-                    if (prefix == "DI_F")
+                    DialogueData dialogue = config[i];
+
+                    Action wrappedCompleteAction = () =>
                     {
-                        controllerUI.ShowFader($"{config[i].Text} {daySystem.CurrentDay}", completeAction);
+                        dialogueHistorySystem?.MarkShown(dialogue.Id);
+                        completeAction?.Invoke();
+                    };
+
+                    if (id.StartsWith("DI_F"))
+                    {
+                        controllerUI.ShowFader($"{dialogue.Text} {daySystem.CurrentDay}", wrappedCompleteAction);
                     }
                     else
                     {
-                        controllerUI.ShowDialog(config[i].Text, config[i].Delay, completeAction);
+                        controllerUI.ShowDialog(dialogue.Text, dialogue.Delay, wrappedCompleteAction);
                     }
                     
                     break;

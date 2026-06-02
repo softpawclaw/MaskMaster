@@ -91,6 +91,7 @@ namespace Interactable.MaskWorkbench
         private bool inputSubscribed;
 
         public event Action<MaskWorkbench> ProductionStarted;
+        public event Action<MaskWorkbench> ProductionCompleted;
 
         public MaskWorkbenchState State => state;
         public bool HasStarted => session.HasStarted;
@@ -419,6 +420,7 @@ namespace Interactable.MaskWorkbench
             runtimeCraftMask.HideCraftHelpers();
             runtimeCraftMask.LogFinalCraftDataDump();
             session.MarkCompleted(runtimeCraftMask);
+            ProductionCompleted?.Invoke(this);
 
             SetState(MaskWorkbenchState.Completed);
             RefreshRuntimeViews();

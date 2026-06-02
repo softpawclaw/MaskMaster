@@ -26,6 +26,7 @@ namespace Interactable
         private DaySystem daySystem;
         private bool subscribedToDaySystem;
         private bool subscribedToWorkbench;
+        private bool entryTriggerArmed;
 
         private void Awake()
         {
@@ -65,6 +66,36 @@ namespace Interactable
             SetDoorOpen(false);
         }
 
+        public void ArmEntryTrigger()
+        {
+            entryTriggerArmed = true;
+
+            if (logStateChanges)
+                Debug.Log($"{name}: storage entry trigger armed.");
+        }
+
+        public void DisarmEntryTrigger()
+        {
+            entryTriggerArmed = false;
+
+            if (logStateChanges)
+                Debug.Log($"{name}: storage entry trigger disarmed.");
+        }
+
+        public bool TryCloseDoorFromEntryTrigger(GameObject source)
+        {
+            if (!entryTriggerArmed)
+                return false;
+
+            entryTriggerArmed = false;
+
+            if (logStateChanges)
+                Debug.Log($"{name}: storage entry trigger consumed by {source?.name}. Closing door.");
+
+            CloseDoor();
+            return true;
+        }
+
         private void TrySubscribe()
         {
             if (!subscribedToDaySystem)
@@ -94,6 +125,7 @@ namespace Interactable
                 return;
 
             CloseDoor();
+            ArmEntryTrigger();
         }
 
         private void OnProductionStarted(MaskWorkbenchComponent source)
@@ -101,6 +133,7 @@ namespace Interactable
             if (!closeOnProductionStarted)
                 return;
 
+            DisarmEntryTrigger();
             CloseDoor();
         }
 

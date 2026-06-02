@@ -255,6 +255,68 @@ namespace Items
             RefreshHandView();
         }
 
+
+        public bool IsValidStorageExitTray(MainRecipeItem recipe, out string message)
+        {
+            message = string.Empty;
+
+            if (recipe == null)
+            {
+                message = "Tray validation failed: no main recipe.";
+                return false;
+            }
+
+            int blankCount = 0;
+            int inlayCount = 0;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] is not ResourceItem resource)
+                    continue;
+
+                if (ResourceTypeHelper.IsBlank(resource.Type))
+                    blankCount++;
+                else if (ResourceTypeHelper.IsInlay(resource.Type))
+                    inlayCount++;
+            }
+
+            int requiredInlayCount = GetRequiredInlayCount(recipe);
+
+            if (blankCount != 1)
+            {
+                message = $"Tray validation failed: expected exactly one blank, actual={blankCount}.";
+                return false;
+            }
+
+            if (inlayCount < requiredInlayCount)
+            {
+                message = $"Tray validation failed: not enough inlays. required={requiredInlayCount}, actual={inlayCount}.";
+                return false;
+            }
+
+            message = $"Tray validation passed: blank={blankCount}, inlays={inlayCount}/{requiredInlayCount}.";
+            return true;
+        }
+
+        private static int GetRequiredInlayCount(MainRecipeItem recipe)
+        {
+            if (recipe == null)
+                return 0;
+
+            var inlays = recipe.GetExpectedInlays();
+            if (inlays == null)
+                return 0;
+
+            int count = 0;
+            for (int i = 0; i < inlays.Length; i++)
+            {
+                if (inlays[i].ResourceType != ResourceType.None)
+                    count++;
+            }
+
+            return count;
+        }
+
         private void Start()
         {
             // Auto-created trays can be given to the player before Unity calls Start().

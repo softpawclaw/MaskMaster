@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Enums;
 using UnityEngine;
@@ -32,6 +32,59 @@ namespace Items
         public override void OnRemovedFromHand()
         {
             base.OnRemovedFromHand();
+        }
+
+
+        public bool IsValidStorageEntryStack(out string message)
+        {
+            message = string.Empty;
+
+            if (!HasMainRecipe())
+            {
+                message = "Paper stack validation failed: no main recipe.";
+                return false;
+            }
+
+            int catalogPageCount = CountCatalogPages();
+            const int requiredCatalogPageCount = 4;
+
+            if (catalogPageCount < requiredCatalogPageCount)
+            {
+                message = $"Paper stack validation failed: catalog pages {catalogPageCount}/{requiredCatalogPageCount}.";
+                return false;
+            }
+
+            message = $"Paper stack validation passed: main recipe + catalog pages {catalogPageCount}/{requiredCatalogPageCount}.";
+            return true;
+        }
+
+        public MainRecipeItem GetMainRecipe()
+        {
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] is MainRecipeItem recipe)
+                    return recipe;
+            }
+
+            return null;
+        }
+
+        public bool HasMainRecipe()
+        {
+            return GetMainRecipe() != null;
+        }
+
+        public int CountCatalogPages()
+        {
+            int count = 0;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] is CatalogPageItem)
+                    count++;
+            }
+
+            return count;
         }
 
         public bool TryAddPage(ItemBase item)

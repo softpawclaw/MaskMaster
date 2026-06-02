@@ -71,7 +71,11 @@ namespace Interactable.Workbench
         public virtual void OnWorkbenchEntered(PlayerWorkbenchModeController controller)
         {
             onWorkbenchEntered?.Invoke();
-            CompleteInteraction(controller.gameObject);
+
+            // Entering a workbench completes the initial click interaction,
+            // but it is not the semantic "after interaction" point for tutors.
+            // Workbench after-context should run only when the player exits the workbench.
+            CompleteInteraction(controller.gameObject, false);
         }
 
         public virtual void OnWorkbenchExitStarted(PlayerWorkbenchModeController controller)
@@ -82,6 +86,7 @@ namespace Interactable.Workbench
         public virtual void OnWorkbenchExited(PlayerWorkbenchModeController controller)
         {
             onWorkbenchExited?.Invoke();
+            TryHandleContextConditions(ContextInteractionCondition.InteractionMoment.AfterInteraction, controller.gameObject, null);
         }
 
         public virtual void HandleCancelFromOverview()
