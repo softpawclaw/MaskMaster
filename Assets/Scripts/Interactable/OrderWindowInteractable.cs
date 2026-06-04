@@ -1,7 +1,8 @@
-using System;
+using System.Collections;
 using DB;
 using Enums;
 using Global;
+using Interactable.Workbench;
 using Items;
 using Player;
 using Systems;
@@ -9,27 +10,45 @@ using UnityEngine;
 
 namespace Interactable
 {
-    public class OrderWindowInteractable : Interactable
+    /// <summary>
+    /// Order window is now a small workbench-like interaction:
+    /// player enters a fixed view, shutter/ticket actions play, dialogues run,
+    /// and player exits manually with cancel/back.
+    /// </summary>
+    public class OrderWindowInteractable : WorkbenchInteractableBase
     {
-        public event Action OnNextDialog;
-
         [Header("Fallback Dialogues")]
         [SerializeField] private string[] noOneAtWindowDialogIds;
         [SerializeField] private string[] requestWaitingDialogIds;
 
+        [Header("Shutter")]
+        [SerializeField] private Animator shutterAnimator;
+        [SerializeField] private string openShutterTrigger = "Open";
+        [SerializeField] private string closeShutterTrigger = "Close";
+        [SerializeField] private float openShutterDelay = 0.35f;
+        [SerializeField] private float closeShutterDelay = 0.25f;
+        [SerializeField] private bool shutterOpenOnStart = false;
+
+        [Header("Debug")]
+        [SerializeField] private bool logWindowFlow = true;
+
         private DBMask.MaskData currentMask;
 
-        private PlayerHandsController playerHandsController = null;
-        private UISystem uiSystem = null;
-        private QuestSystem questSystem = null;
-        private OrdersSystem ordersSystem = null;
-        private ItemsFactory itemsFactory = null;
-        private DelayedDialogSystem delayedDialogSystem = null;
-        private MaskEvaluationSystem maskEvaluationSystem = null;
+        private PlayerHandsController playerHandsController;
+        private UISystem uiSystem;
+        private QuestSystem questSystem;
+        private OrdersSystem ordersSystem;
+        private ItemsFactory itemsFactory;
+        private DelayedDialogSystem delayedDialogSystem;
+        private MaskEvaluationSystem maskEvaluationSystem;
+        private OrderTicketSystem orderTicketSystem;
 
-        private int currentDialog = 0;
-        private bool requestPromptShown = false;
-        private bool currentOrderFinalized = false;
+        private PlayerWorkbenchModeController activeController;
+        private Coroutine flowRoutine;
+        private bool flowInProgress;
+        private bool shutterIsOpen;
+        private bool closeShutterOnExit = true;
+        private bool currentOrderFinalized;
 
         public void Link()
         {
@@ -40,154 +59,158 @@ namespace Interactable
             itemsFactory = Linker.Instance.ItemsFactory;
             delayedDialogSystem = Linker.Instance.DelayedDialogSystem;
             maskEvaluationSystem = Linker.Instance.MaskEvaluationSystem;
+            orderTicketSystem = Linker.Instance.OrderTicketSystem;
+
+            shutterIsOpen = shutterOpenOnStart;
 
             ordersSystem.OnOrderChosen += OnOrderChosenSignature;
-            OnNextDialog += OnNextDialogSignature;
         }
 
         private void OnOrderChosenSignature(DBQuest.QuestData targetQuest, DBMask.MaskData targetMask)
         {
             currentMask = targetMask;
-            currentDialog = 0;
-            requestPromptShown = false;
             currentOrderFinalized = false;
 
-            Debug.Log($"OrderWindowInteractable: order selected. OR_Id={currentMask.OR_Id}, ClientId={currentMask.ClientId}");
+            if (logWindowFlow)
+                Debug.Log($"OrderWindowInteractable: order selected. OR_Id={currentMask.OR_Id}, ClientId={currentMask.ClientId}");
         }
 
-        protected override void OnInteract(GameObject interactor)
+        public override void OnWorkbenchEntered(PlayerWorkbenchModeController controller)
         {
-            if (playerHandsController == null)
-            {
-                playerHandsController = interactor.GetComponent<PlayerHandsController>();
-            }
+            base.OnWorkbenchEntered(controller);
 
-            if (playerHandsController == null)
+            activeController = controller;
+            playerHandsController ??= controller.GetComponent<PlayerHandsController>();
+
+            if (flowRoutine != null)
+                StopCoroutine(flowRoutine);
+
+            flowRoutine = StartCoroutine(WindowFlowRoutine(controller.gameObject));
+        }
+
+        public override void HandleCancelFromOverview()
+        {
+            if (flowInProgress)
+                return;
+
+            if (activeController == null)
             {
-                Debug.LogWarning("OrderWindowInteractable: PlayerHandsController not found.");
-                CompleteInteraction(interactor);
+                base.HandleCancelFromOverview();
                 return;
             }
 
-            currentDialog = 0;
+            if (flowRoutine != null)
+                StopCoroutine(flowRoutine);
+
+            flowRoutine = StartCoroutine(ExitWindowRoutine());
+        }
+
+        public override void HandleFocusInteract(WorkbenchFocusTarget target)
+        {
+            // MVP: order window does not use focus targets yet.
+        }
+
+        private IEnumerator WindowFlowRoutine(GameObject interactor)
+        {
+            flowInProgress = true;
+
+            EnsurePlayerHands(interactor);
+            yield return EnsureShutterOpen();
 
             if (currentOrderFinalized)
             {
-                PlayNoOneAtWindow(interactor);
-                return;
+                closeShutterOnExit = true;
+                yield return PlayRandomDialogue(noOneAtWindowDialogIds, "noOneAtWindowDialogIds");
+                FinishFlow();
+                yield break;
             }
 
             switch (questSystem.CurrentState)
             {
                 case QuestState.Start:
-                    OnNextDialog?.Invoke();
+                    yield return NewOrderFlow();
                     break;
 
                 case QuestState.Await:
-                    PlayNoOneAtWindow(interactor);
+                    closeShutterOnExit = true;
+                    yield return PlayRandomDialogue(noOneAtWindowDialogIds, "noOneAtWindowDialogIds");
                     break;
 
                 case QuestState.Request:
-                    OnNextDialog?.Invoke();
+                    yield return CustomerRequestFlow();
                     break;
 
                 case QuestState.MaskAwait:
-                    TryCompleteRequestFlow(interactor);
+                    yield return MaskAwaitFlow(interactor);
                     break;
 
                 case QuestState.Success:
                 case QuestState.Failure:
-                    OnNextDialog?.Invoke();
+                    yield return FinalOrderDialogFlow();
                     break;
 
                 default:
-                    PlayNoOneAtWindow(interactor);
+                    closeShutterOnExit = true;
+                    yield return PlayRandomDialogue(noOneAtWindowDialogIds, "noOneAtWindowDialogIds");
                     break;
             }
+
+            FinishFlow();
         }
 
-        private void OnNextDialogSignature()
+        private IEnumerator NewOrderFlow()
         {
-            var dialogs = questSystem.GetDialogs();
+            closeShutterOnExit = true;
 
-            if (dialogs == null || dialogs.Length == 0)
-            {
-                CompleteInteraction(playerHandsController != null ? playerHandsController.gameObject : gameObject);
-                return;
-            }
+            yield return PlayQuestDialogSequence();
 
-            if (dialogs.Length > currentDialog)
+            string questId = questSystem.CurrentQuestId;
+            if (orderTicketSystem != null && orderTicketSystem.TryAssignFreeTicket(questId, out int ticketNumber))
             {
-                uiSystem.Execute(dialogs[currentDialog], OnNextDialog);
-                currentDialog++;
+                orderTicketSystem.PlaceTicketAtWindowSpotInstant(ticketNumber);
+                yield return orderTicketSystem.MoveTicketFromWindowToCustomer(ticketNumber);
             }
             else
             {
-                OnDialogComplete();
+                Debug.LogWarning("OrderWindowInteractable: OrderTicketSystem missing or no free ticket. Order will continue without visible ticket.");
             }
+
+            GiveRecipeToPlayer();
+            questSystem.ChangeQuestState();
         }
 
-        private void OnDialogComplete()
+        private IEnumerator CustomerRequestFlow()
         {
-            switch (questSystem.CurrentState)
+            closeShutterOnExit = false;
+
+            yield return PlayQuestDialogSequence();
+
+            string questId = questSystem.CurrentQuestId;
+            if (orderTicketSystem != null && orderTicketSystem.TryGetTicketForQuest(questId, out int ticketNumber))
             {
-                case QuestState.Start:
-                    GiveRecipeFlow();
-                    break;
-
-                case QuestState.Request:
-                    FinishRequestPromptFlow();
-                    break;
-
-                case QuestState.Success:
-                case QuestState.Failure:
-                    FinishFinalOrderFlow();
-                    break;
-
-                default:
-                    CompleteInteraction(playerHandsController != null ? playerHandsController.gameObject : gameObject);
-                    break;
+                yield return orderTicketSystem.MoveTicketFromCustomerToWindow(ticketNumber);
             }
-        }
-
-        private void GiveRecipeFlow()
-        {
-            playerHandsController.OnItemTaken += GiveRecipeDelayed;
-
-            var paperStack = itemsFactory.CreatePaperStack();
-            playerHandsController.GiveItem(paperStack);
+            else
+            {
+                Debug.LogWarning($"OrderWindowInteractable: no ticket found for quest {questId}.");
+            }
 
             questSystem.ChangeQuestState();
-            CompleteInteraction(playerHandsController.gameObject);
         }
 
-        private void GiveRecipeDelayed()
+        private IEnumerator MaskAwaitFlow(GameObject interactor)
         {
-            playerHandsController.OnItemTaken -= GiveRecipeDelayed;
-
-            var recipe = itemsFactory.CreateMainRecipe(currentMask);
-            playerHandsController.GiveItem(recipe);
-        }
-
-        private void FinishRequestPromptFlow()
-        {
-            requestPromptShown = true;
-            questSystem.ChangeQuestState();
-            CompleteInteraction(playerHandsController.gameObject);
-        }
-
-        private void TryCompleteRequestFlow(GameObject interactor)
-        {
-            var mask = TryGetMaskFromHands();
+            MaskItem mask = TryGetMaskFromHands();
 
             if (mask == null)
             {
-                PlayRequestWaiting(interactor);
-                return;
+                closeShutterOnExit = false;
+                yield return PlayRandomDialogue(requestWaitingDialogIds, "requestWaitingDialogIds");
+                yield break;
             }
 
-            // Важно: окно принимает любую готовую маску.
-            // Соответствие заказу оценивается после сдачи, не на этапе передачи предмета.
+            closeShutterOnExit = true;
+
             playerHandsController.FreeItem(mask);
 
             QuestState resultState = QuestState.Success;
@@ -205,20 +228,27 @@ namespace Interactable
 
             questSystem.SetQuestState(resultState);
 
-            currentDialog = 0;
-            OnNextDialog?.Invoke();
+            yield return PlayQuestDialogSequence();
+
+            FinishCurrentOrder();
         }
 
-        private void FinishFinalOrderFlow()
+        private IEnumerator FinalOrderDialogFlow()
+        {
+            closeShutterOnExit = true;
+            yield return PlayQuestDialogSequence();
+            FinishCurrentOrder();
+        }
+
+        private void FinishCurrentOrder()
         {
             if (currentOrderFinalized)
-            {
-                PlayNoOneAtWindow(playerHandsController.gameObject);
                 return;
-            }
 
             currentOrderFinalized = true;
-            requestPromptShown = false;
+
+            string questId = questSystem.CurrentQuestId;
+            orderTicketSystem?.ReturnTicketToRack(questId);
 
             bool hasMoreOrdersToday = ordersSystem.HasMoreOrdersToday();
 
@@ -228,39 +258,148 @@ namespace Interactable
             {
                 delayedDialogSystem?.ScheduleBell();
             }
-
-            CompleteInteraction(playerHandsController.gameObject);
         }
 
-        private void PlayNoOneAtWindow(GameObject interactor)
+        private void GiveRecipeToPlayer()
         {
-            PlayRandomDialogueOrComplete(noOneAtWindowDialogIds, interactor, "noOneAtWindowDialogIds");
+            if (playerHandsController == null || itemsFactory == null)
+            {
+                Debug.LogWarning("OrderWindowInteractable: cannot give recipe, hands or factory missing.");
+                return;
+            }
+
+            playerHandsController.OnItemTaken += GiveRecipeDelayed;
+
+            PaperStackItem paperStack = itemsFactory.CreatePaperStack();
+            playerHandsController.GiveItem(paperStack);
         }
 
-        private void PlayRequestWaiting(GameObject interactor)
+        private void GiveRecipeDelayed()
         {
-            PlayRandomDialogueOrComplete(requestWaitingDialogIds, interactor, "requestWaitingDialogIds");
+            playerHandsController.OnItemTaken -= GiveRecipeDelayed;
+
+            if (itemsFactory == null)
+                return;
+
+            MainRecipeItem recipe = itemsFactory.CreateMainRecipe(currentMask);
+            playerHandsController.GiveItem(recipe);
         }
 
-        private void PlayRandomDialogueOrComplete(string[] dialogueIds, GameObject interactor, string fieldName)
+        private IEnumerator PlayQuestDialogSequence()
         {
-            var dialogueId = GetRandomDialogueId(dialogueIds);
+            string[] dialogs = questSystem.GetDialogs();
+            if (dialogs == null || dialogs.Length == 0)
+                yield break;
+
+            for (int i = 0; i < dialogs.Length; i++)
+            {
+                if (string.IsNullOrWhiteSpace(dialogs[i]))
+                    continue;
+
+                yield return PlayDialogue(dialogs[i]);
+            }
+        }
+
+        private IEnumerator PlayRandomDialogue(string[] dialogueIds, string fieldName)
+        {
+            string dialogueId = GetRandomDialogueId(dialogueIds);
 
             if (string.IsNullOrWhiteSpace(dialogueId))
             {
                 Debug.LogWarning($"OrderWindowInteractable: {fieldName} is empty.");
-                CompleteInteraction(interactor);
-                return;
+                yield break;
             }
 
+            yield return PlayDialogue(dialogueId);
+        }
+
+        private IEnumerator PlayDialogue(string dialogueId)
+        {
             if (uiSystem == null)
             {
                 Debug.LogWarning("OrderWindowInteractable: UISystem is not linked.");
-                CompleteInteraction(interactor);
-                return;
+                yield break;
             }
 
-            uiSystem.Execute(dialogueId, () => CompleteInteraction(interactor));
+            bool complete = false;
+            uiSystem.Execute(dialogueId, () => complete = true);
+
+            while (!complete)
+                yield return null;
+        }
+
+        private IEnumerator EnsureShutterOpen()
+        {
+            if (shutterIsOpen)
+                yield break;
+
+            if (shutterAnimator != null && !string.IsNullOrWhiteSpace(openShutterTrigger))
+                shutterAnimator.SetTrigger(openShutterTrigger);
+
+            shutterIsOpen = true;
+
+            if (openShutterDelay > 0f)
+                yield return new WaitForSeconds(openShutterDelay);
+        }
+
+        private IEnumerator EnsureShutterClosed()
+        {
+            if (!shutterIsOpen)
+                yield break;
+
+            if (shutterAnimator != null && !string.IsNullOrWhiteSpace(closeShutterTrigger))
+                shutterAnimator.SetTrigger(closeShutterTrigger);
+
+            shutterIsOpen = false;
+
+            if (closeShutterDelay > 0f)
+                yield return new WaitForSeconds(closeShutterDelay);
+        }
+
+        private IEnumerator ExitWindowRoutine()
+        {
+            flowInProgress = true;
+
+            if (closeShutterOnExit)
+                yield return EnsureShutterClosed();
+
+            flowInProgress = false;
+
+            if (activeController != null)
+                activeController.ExitWorkbench(ExitDuration);
+        }
+
+        private void FinishFlow()
+        {
+            flowInProgress = false;
+            flowRoutine = null;
+        }
+
+        private void EnsurePlayerHands(GameObject interactor)
+        {
+            if (playerHandsController != null)
+                return;
+
+            playerHandsController = interactor != null ? interactor.GetComponent<PlayerHandsController>() : null;
+
+            if (playerHandsController == null && Linker.Instance != null)
+                playerHandsController = Linker.Instance.PlayerHandsController;
+        }
+
+        private MaskItem TryGetMaskFromHands()
+        {
+            if (playerHandsController == null)
+                return null;
+
+            ItemBase right = playerHandsController.GetItem(HandType.Right);
+            if (right is MaskItem rightMask)
+                return rightMask;
+
+            ItemBase left = playerHandsController.GetItem(HandType.Left);
+            if (left is MaskItem leftMask)
+                return leftMask;
+
+            return null;
         }
 
         private string GetRandomDialogueId(string[] dialogueIds)
@@ -271,20 +410,7 @@ namespace Interactable
             if (dialogueIds.Length == 1)
                 return dialogueIds[0];
 
-            return dialogueIds[UnityEngine.Random.Range(0, dialogueIds.Length)];
-        }
-
-        private MaskItem TryGetMaskFromHands()
-        {
-            var right = playerHandsController.GetItem(HandType.Right);
-            if (right is MaskItem rightMask)
-                return rightMask;
-
-            var left = playerHandsController.GetItem(HandType.Left);
-            if (left is MaskItem leftMask)
-                return leftMask;
-
-            return null;
+            return dialogueIds[Random.Range(0, dialogueIds.Length)];
         }
     }
 }
